@@ -805,7 +805,7 @@ theorem updatedStateComm'
 theorem updatedStatesComm
   {P : PureExpr} {σ : SemanticStore P}
   {kvs kvs' : List (P.Ident × P.Expr)} :
-  kvs.unzip.1.Disjoint kvs'.unzip.1 →
+  kvs.unzip.1.Disjoint' kvs'.unzip.1 →
   updatedStates' (updatedStates' σ kvs) kvs' =
   updatedStates' (updatedStates' σ kvs') kvs := by
   intros Hnd
@@ -817,14 +817,14 @@ theorem updatedStatesComm
     rw [updatedStateComm]
     rw [updatedStateComm']
     . simp at Hnd
-      have Hnd' := List.Disjoint.symm Hnd
-      apply List.Disjoint_cons_head
-      apply List.Disjoint.mono_right _ Hnd'
+      have Hnd' := List.Disjoint'.symm Hnd
+      apply List.Disjoint'_cons_head
+      apply List.Disjoint'.mono_right _ Hnd'
       simp_all
     . intros Hin
-      simp_all [List.Disjoint]
+      simp_all [List.Disjoint']
     . simp at *
-      refine List.Disjoint.mono_right ?_ Hnd
+      refine List.Disjoint'.mono_right ?_ Hnd
       simp_all
 
 theorem UpdateStateSomeMonotone
@@ -1164,7 +1164,7 @@ specialize Hnin k1
 simp_all
 
 theorem substStoresUpdatesInv :
-ks.Disjoint substs.unzip.2 →
+ks.Disjoint' substs.unzip.2 →
 substStores σ σ' substs →
 UpdateStates σ' ks vs σ'' →
 substStores σ σ'' substs := by
@@ -1176,7 +1176,7 @@ case update_none =>
   exact Hsubst k1 k2 Hin
 case update_some σ x v σ' xs vs σ₁ Hup Hinits ih =>
   have Hnin : ¬ x ∈ substs.unzip.2 := by
-    simp [List.Disjoint] at Hnin
+    simp [List.Disjoint'] at Hnin
     intros Hin
     have Hprod := List.mem_zip_2 (l₁:=substs.unzip.fst) (by simp) Hin
     rw [List.zip_unzip] at Hprod
@@ -1186,11 +1186,11 @@ case update_some σ x v σ' xs vs σ₁ Hup Hinits ih =>
     contradiction
   have HH := substStoresUpdateInv (σ:=σ) Hnin Hsubst Hup
   apply ih HH
-  simp [List.Disjoint] at *
+  simp [List.Disjoint'] at *
   simp_all
 
 theorem substStoresUpdatesInv' :
-ks.Disjoint substs.unzip.1 →
+ks.Disjoint' substs.unzip.1 →
 substStores σ σ' substs →
 UpdateStates σ ks vs σ'' →
 substStores σ'' σ' substs := by
@@ -1564,7 +1564,7 @@ theorem InitStateDefMonotone'
     exact Hdef Hv'
 
 theorem InitStatesDefMonotone' :
-  vs.Disjoint vs' →
+  vs.Disjoint' vs' →
   isDefined σ' vs →
   InitStates σ vs' es' σ' →
   isDefined σ vs := by
@@ -1578,12 +1578,12 @@ theorem InitStatesDefMonotone' :
     apply Hdisj Hin
     exact List.mem_cons_self
   . apply ih
-    . apply List.Disjoint.mono_right _ Hdisj
+    . apply List.Disjoint'.mono_right _ Hdisj
       exact List.sublist_cons_self x xs'
     . assumption
 
 theorem InitVarsDefMonotone' :
-  vs.Disjoint vs' →
+  vs.Disjoint' vs' →
   isDefined σ' vs →
   InitVars σ vs' σ' →
   isDefined σ vs := by
@@ -1594,7 +1594,7 @@ theorem InitVarsDefMonotone' :
   exact InitStatesDefMonotone' Hdisj Hdef Hinit
 
 -- theorem InitVarsNotDefMonotone' :
---   vs.Disjoint vs' →
+--   vs.Disjoint' vs' →
 --   isDefined σ' vs →
 --   InitVars σ vs' σ' →
 --   isNotDefined σ vs := by
@@ -1796,7 +1796,7 @@ theorem InvStoresUpdatedStateDisjRightMono :
       exact H
 
 theorem InvStoresUpdatedStatesDisjRightMono :
-  ks.Disjoint ks' →
+  ks.Disjoint' ks' →
   invStores σ σ' ks →
   ks'.length = vs'.length →
   invStores σ (updatedStates σ' ks' vs') ks := by
@@ -1832,7 +1832,7 @@ theorem InvStoresUpdatedStateDisjLeftMono :
   exact InvStoresUpdatedStateDisjRightMono Hnin Hinv'
 
 theorem InvStoresUpdatedStatesDisjLeftMono :
-  ks.Disjoint ks' →
+  ks.Disjoint' ks' →
   invStores σ σ' ks →
   ks'.length = vs'.length →
   invStores (updatedStates σ ks' vs') σ' ks := by
@@ -1855,7 +1855,7 @@ theorem InvStoresExceptApp :
   invStoresExcept σ σ' (ks ++ ks') := by
   intros Hinv x Hdisj
   apply Hinv
-  exact List.DisjointAppRight' Hdisj
+  exact List.Disjoint'AppRight' Hdisj
 
 theorem InvStoresExceptUpdated :
   invStoresExcept σ σ' ks →
@@ -1865,9 +1865,9 @@ theorem InvStoresExceptUpdated :
   simp [invStoresExcept] at *
   intros vsInv Hdisj
   refine InvStoresUpdatedStatesDisjLeftMono ?_ ?_ Hlen
-  exact List.DisjointAppLeft' Hdisj
+  exact List.Disjoint'AppLeft' Hdisj
   apply Hinv
-  exact List.DisjointAppRight' Hdisj
+  exact List.Disjoint'AppRight' Hdisj
 
 theorem UpdatedStatesInSame :
   k ∈ ks' →
@@ -1954,7 +1954,7 @@ theorem InvStoresExceptUpdatedMem :
   simp [invStoresExcept] at *
   intros Hsub vs Hdisj
   refine InvStoresUpdatedStatesDisjLeftMono ?_ ?_ Hlen
-  exact List.Disjoint_Subset Hdisj Hsub
+  exact List.Disjoint'_Subset Hdisj Hsub
   exact Hinv _ Hdisj
 
 theorem InvStoresExceptUpdateStates :
@@ -1999,11 +1999,11 @@ theorem InvStoresExceptInitVars :
 
 theorem InvStoresExceptInvStores :
   invStoresExcept σ σ' ks →
-  List.Disjoint ks ks' →
+  List.Disjoint' ks ks' →
   invStores σ σ' ks' := by
   intros Hinv Hdis k1 k2 Hin
   apply Hinv ks'
-  exact List.Disjoint.symm Hdis
+  exact List.Disjoint'.symm Hdis
   assumption
 
 /--

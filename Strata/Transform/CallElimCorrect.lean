@@ -41,7 +41,7 @@ theorem BoogieIdent.isLocl_isGlobOrLocl :
   simp [BoogieIdent.isGlobOrLocl]
   exact Or.symm (Or.inl H)
 
-theorem BoogieIdent.Disjoint_isTemp_isGlobOrLocl :
+theorem BoogieIdent.Disjoint'_isTemp_isGlobOrLocl :
   PredDisjoint (BoogieIdent.isTemp ·) (BoogieIdent.isGlobOrLocl ·) := by
   intros x H1 H2
   simp [BoogieIdent.isTemp] at H1
@@ -49,7 +49,7 @@ theorem BoogieIdent.Disjoint_isTemp_isGlobOrLocl :
   split at H1 <;> simp_all
   cases H2 <;> simp [BoogieIdent.isGlob, BoogieIdent.isLocl] at *
 
-theorem BoogieIdent.Disjoint_isLocl_isGlob :
+theorem BoogieIdent.Disjoint'_isLocl_isGlob :
   PredDisjoint (BoogieIdent.isLocl ·) (BoogieIdent.isGlob ·) := by
   intros x H1 H2
   simp [BoogieIdent.isLocl] at H1
@@ -410,7 +410,7 @@ theorem EvalExpressionUpdatedStates {δ : BoogieEval} :
   Imperative.WellFormedSemanticEvalVal δ →
   ks'.length = vs'.length →
   ks'.Nodup →
-  ks'.Disjoint (Imperative.HasVarsPure.getVars e) →
+  ks'.Disjoint' (Imperative.HasVarsPure.getVars e) →
   δ σ₀ σ e = some v →
   δ σ₀ (updatedStates σ ks' vs') e = some v := by
   intros Hwfv Hwfc Hwfvl Hlen Hnd Hnin Heval
@@ -431,7 +431,7 @@ theorem EvalExpressionUpdatedStates {δ : BoogieEval} :
         apply Hnin _ Hin
         simp_all
       . apply ih <;> simp_all
-        apply List.Disjoint.mono_left _ Hnin
+        apply List.Disjoint'.mono_left _ Hnin
         simp_all
       . rw [List.unzip_zip] <;> grind
 
@@ -441,7 +441,7 @@ theorem EvalExpressionsUpdatedStates {δ : BoogieEval} :
   Imperative.WellFormedSemanticEvalVal δ →
   ks'.length = vs'.length →
   ks'.Nodup →
-  ks'.Disjoint (es.flatMap Imperative.HasVarsPure.getVars) →
+  ks'.Disjoint' (es.flatMap Imperative.HasVarsPure.getVars) →
   EvalExpressions (P:=Boogie.Expression) δ σ₀ σ es vs →
   EvalExpressions (P:=Boogie.Expression) δ σ₀ (updatedStates σ ks' vs') es vs := by
   intros Hwfv Hwfc Hwfvl Hlen Hnd Hnin Heval
@@ -463,7 +463,7 @@ theorem EvalExpressionsUpdatedStates {δ : BoogieEval} :
         apply Hnin _ Hin
         simp_all
       . apply ih <;> simp_all
-        apply List.Disjoint.mono_left _ Hnin
+        apply List.Disjoint'.mono_left _ Hnin
         simp_all
       . rw [List.unzip_zip] <;> grind
 
@@ -510,7 +510,7 @@ theorem ReadValuesUpdatedState :
 
 theorem ReadValuesUpdatedStates :
   ks'.length = vs'.length →
-  ks'.Disjoint ks →
+  ks'.Disjoint' ks →
   ReadValues σ ks vs →
   ReadValues (updatedStates σ ks' vs') ks vs := by
   intros Hlen Hin Hrd
@@ -530,7 +530,7 @@ theorem ReadValuesUpdatedStates :
         . intros Hin'
           exact Hin Hin' List.mem_cons_self
       . apply ih ?_ Ht
-        apply List.Disjoint.mono_right _ Hin
+        apply List.Disjoint'.mono_right _ Hin
         simp_all
 
 theorem ReadValueUpdatedState' :
@@ -576,7 +576,7 @@ theorem ReadValuesUpdatedState' :
 
 theorem ReadValuesUpdatedStates' :
   ks'.length = vs'.length →
-  ks'.Disjoint ks →
+  ks'.Disjoint' ks →
   ReadValues (updatedStates σ ks' vs') ks vs →
   ReadValues σ ks vs := by
   intros Hlen Hin Hrd
@@ -596,7 +596,7 @@ theorem ReadValuesUpdatedStates' :
         . intros Hin'
           exact Hin Hin' List.mem_cons_self
       . apply ih ?_ Ht
-        apply List.Disjoint.mono_right _ Hin
+        apply List.Disjoint'.mono_right _ Hin
         simp_all
 
 theorem ReadValuesUpdatedStatesSame :
@@ -719,7 +719,7 @@ theorem EvalStatementsContractInits :
   Imperative.WellFormedSemanticEvalVal δ →
   WellFormedBoogieEvalCong δ →
   -- the generated old variable names shouldn't overlap with original variables
-  trips.unzip.1.unzip.1.Disjoint (List.flatMap (Imperative.HasVarsPure.getVars (P:=Expression)) trips.unzip.2) →
+  trips.unzip.1.unzip.1.Disjoint' (List.flatMap (Imperative.HasVarsPure.getVars (P:=Expression)) trips.unzip.2) →
   List.Nodup (trips.unzip.1.unzip.1) →
   EvalExpressions (P:=Boogie.Expression) δ σ₀ σ (trips.unzip.2) vvs →
   -- ReadValues σ (trips.unzip.2) vvs →
@@ -745,13 +745,13 @@ theorem EvalStatementsContractInits :
     apply Hndef <;> simp_all
     unfold updatedStates
     apply ih
-    . apply List.Disjoint.mono ?_ ?_ Hdisj <;> simp_all
+    . apply List.Disjoint'.mono ?_ ?_ Hdisj <;> simp_all
     . simp_all
     . refine EvalExpressionsUpdatedState Hwfvr Hwfc Hwfvl ?_ Hrest
       simp at Hdisj
       have Hdisj' :
-        [v'].Disjoint (List.flatMap Imperative.HasVarsPure.getVars t.unzip.snd) := by
-        apply List.Disjoint.mono ?_ ?_ Hdisj <;> simp_all
+        [v'].Disjoint' (List.flatMap Imperative.HasVarsPure.getVars t.unzip.snd) := by
+        apply List.Disjoint'.mono ?_ ?_ Hdisj <;> simp_all
       intros Hin
       exact Hdisj' (List.mem_singleton.mpr rfl) Hin
     . simp [Imperative.isNotDefined] at Hndef ⊢
@@ -973,7 +973,7 @@ theorem UpdateStatesUpdatedDists
 {P : Imperative.PureExpr}
 {σ σ' : Imperative.SemanticStore P}
 {ks ks': List P.Ident} {vs vs' : List P.Expr} :
-  ks.Disjoint ks' →
+  ks.Disjoint' ks' →
   UpdateStates σ ks vs σ' →
   UpdateStates (updatedStates σ ks' vs') ks vs (updatedStates σ' ks' vs') := by
 intros Hnd Hup
@@ -983,17 +983,17 @@ case update_none =>
 case update_some Hup Hups ih =>
   apply UpdateStates.update_some
   . apply UpdateStateUpdatedDists <;> try assumption
-    simp [List.Disjoint] at Hnd
+    simp [List.Disjoint'] at Hnd
     simp_all
   . apply ih
-    simp [List.Disjoint] at *
+    simp [List.Disjoint'] at *
     simp_all
 
 theorem InitStatesUpdatedDists
 {P : Imperative.PureExpr}
 {σ σ' : Imperative.SemanticStore P}
 {ks ks': List P.Ident} {vs vs' : List P.Expr} :
-  ks.Disjoint ks' →
+  ks.Disjoint' ks' →
   InitStates σ ks vs σ' →
   InitStates (updatedStates σ ks' vs') ks vs (updatedStates σ' ks' vs') := by
 intros Hnd Hup
@@ -1003,10 +1003,10 @@ case init_none =>
 case init_some Hup Hups ih =>
   apply InitStates.init_some
   . apply InitStateUpdatedDists <;> try assumption
-    simp [List.Disjoint] at Hnd
+    simp [List.Disjoint'] at Hnd
     simp_all
   . apply ih
-    simp [List.Disjoint] at *
+    simp [List.Disjoint'] at *
     simp_all
 
 theorem UpdateStatesUpdatedDist
@@ -1018,7 +1018,7 @@ theorem UpdateStatesUpdatedDist
   UpdateStates σ ks vs σ' →
   UpdateStates (updatedState σ k v) ks vs (updatedState σ' k v) := by
 intros Hnd Hup
-have Hnd : ks.Disjoint [k] := by
+have Hnd : ks.Disjoint' [k] := by
   intros a Hin1 Hin2
   apply Hnd
   simp_all
@@ -1027,7 +1027,7 @@ simp [updatedStates, updatedStates'] at HH
 assumption
 
 theorem HavocVarsUpdatedDists :
-ks.Disjoint ks' →
+ks.Disjoint' ks' →
 HavocVars σ ks σ' →
 HavocVars (updatedStates σ ks' vs') ks
           (updatedStates σ' ks' vs') := by
@@ -1041,14 +1041,14 @@ case cons h t ih =>
   cases Hhav
   next v σ'' Hup Hhav2 =>
   apply HavocVars.update_some (v:=v) (σ':=(updatedStates σ'' ks' vs'))
-  . simp [List.Disjoint] at Hnd
+  . simp [List.Disjoint'] at Hnd
     apply UpdateStateUpdatedDists Hnd.1 Hup
   . apply ih ?_ Hhav2
-    apply List.Disjoint.mono_left ?_ Hnd
+    apply List.Disjoint'.mono_left ?_ Hnd
     simp_all
 
 theorem InitVarsUpdatedDists :
-ks.Disjoint ks' →
+ks.Disjoint' ks' →
 InitVars σ ks σ' →
 InitVars (updatedStates σ ks' vs') ks
           (updatedStates σ' ks' vs') := by
@@ -1062,10 +1062,10 @@ case cons h t ih =>
   cases Hhav
   next v σ'' Hup Hhav2 =>
   apply InitVars.init_some (v:=v) (σ':=(updatedStates σ'' ks' vs'))
-  . simp [List.Disjoint] at Hnd
+  . simp [List.Disjoint'] at Hnd
     apply InitStateUpdatedDists Hnd.1 Hup
   . apply ih ?_ Hhav2
-    apply List.Disjoint.mono_left ?_ Hnd
+    apply List.Disjoint'.mono_left ?_ Hnd
     simp_all
 
 theorem HavocVarsUpdatedDist :
@@ -1074,7 +1074,7 @@ HavocVars σ ks σ' →
 HavocVars (updatedState σ k v) ks
           (updatedState σ' k v) := by
 intros Hnd Hhav
-have Hnd : ks.Disjoint [k] := by
+have Hnd : ks.Disjoint' [k] := by
   intros a Hin1 Hin2
   apply Hnd
   simp_all
@@ -1088,7 +1088,7 @@ InitVars σ ks σ' →
 InitVars (updatedState σ k v) ks
           (updatedState σ' k v) := by
 intros Hnd Hhav
-have Hnd : ks.Disjoint [k] := by
+have Hnd : ks.Disjoint' [k] := by
   intros a Hin1 Hin2
   apply Hnd
   simp_all
@@ -1097,7 +1097,7 @@ simp [updatedStates, updatedStates'] at HH
 assumption
 
 theorem UpdatedStatesDisjNotDefMonotone :
-  ks.Disjoint ks' →
+  ks.Disjoint' ks' →
   ks.length = vs.length →
   Imperative.isNotDefined σ ks' →
   Imperative.isNotDefined (updatedStates σ ks vs) ks' := by
@@ -1113,7 +1113,7 @@ case cons h t ih =>
   case cons h' t' ih' =>
     simp [updatedStates']
     rw [ih] <;> try simp_all
-    . apply List.Disjoint.mono_left _ Hdis
+    . apply List.Disjoint'.mono_left _ Hdis
       simp_all
     . intros v Hin
       simp [updatedState]
@@ -1572,7 +1572,7 @@ theorem Lambda.LExpr.substFvarsCorrect :
   Imperative.substDefined σ σ' (fro.zip to) →
   Imperative.substNodup (fro.zip to) →
   Imperative.substStores σ σ' (fro.zip to) →
-  to.Disjoint (@Imperative.HasVarsPure.getVars Expression _ _ e) →
+  to.Disjoint' (@Imperative.HasVarsPure.getVars Expression _ _ e) →
   Imperative.invStores σ σ'
     ((@Imperative.HasVarsPure.getVars Expression _ _ e).removeAll (fro ++ to)) →
   δ σ₀ σ e = δ σ₀' σ' (e.substFvars (fro.zip $ createFvars to)) := by
@@ -1629,7 +1629,7 @@ theorem Lambda.LExpr.substFvarsCorrect :
       apply invStoresSubstTail Hsubst Hsubst1 Hsome ?_ Hinv
       . simp [Imperative.substNodup] at Hnd
         simp_all
-    . simp [List.Disjoint] at Hnin
+    . simp [List.Disjoint'] at Hnin
       exact invStoresSubstHead Hsubst' Hnin.1
 
 theorem createAssertsCorrect :
@@ -1644,7 +1644,7 @@ theorem createAssertsCorrect :
   (∀ pre, pre ∈ pres →
     Imperative.invStores σA σ'
       ((Imperative.HasVarsPure.getVars (P:=Expression) pre).removeAll (ks ++ ks')) ∧
-    ks'.Disjoint (Imperative.HasVarsPure.getVars (P:=Expression) pre) ∧
+    ks'.Disjoint' (Imperative.HasVarsPure.getVars (P:=Expression) pre) ∧
     δP σA σA pre = some true) →
   EvalExpressions δ σ₀ σ (createFvars ks') vals →
   ReadValues σA ks vals →
@@ -1657,7 +1657,7 @@ theorem createAssertsCorrect :
      (∀ pre, pre ∈ l →
        Imperative.invStores σA σ'
          ((Imperative.HasVarsPure.getVars (P:=Expression) pre).removeAll (ks ++ ks')) ∧
-       ks'.Disjoint (Imperative.HasVarsPure.getVars (P:=Expression) pre) ∧
+       ks'.Disjoint' (Imperative.HasVarsPure.getVars (P:=Expression) pre) ∧
        δP σA σA pre = some true) →
      EvalStatementsContract π δ δP σ₀ σ'
        (List.mapIdx (fun j pred => Statement.assert s!"assert_{i + j}"
@@ -1704,7 +1704,7 @@ theorem createAssumesCorrect :
   (∀ post, post ∈ posts →
     Imperative.invStores σA σ'
       ((Imperative.HasVarsPure.getVars (P:=Expression) post).removeAll (ks ++ ks')) ∧
-    ks'.Disjoint (Imperative.HasVarsPure.getVars (P:=Expression) post) ∧
+    ks'.Disjoint' (Imperative.HasVarsPure.getVars (P:=Expression) post) ∧
     δP σ₀' σA post = some true) →
   Imperative.substStores σA σ' (ks.zip ks') →
   EvalStatementsContract π δ δP σ₀ σ' (createAssumes posts (ks.zip (createFvars ks'))) σ' := by
@@ -1715,7 +1715,7 @@ theorem createAssumesCorrect :
      (∀ post, post ∈ l →
        Imperative.invStores σA σ'
          ((Imperative.HasVarsPure.getVars (P:=Expression) post).removeAll (ks ++ ks')) ∧
-       ks'.Disjoint (Imperative.HasVarsPure.getVars (P:=Expression) post) ∧
+       ks'.Disjoint' (Imperative.HasVarsPure.getVars (P:=Expression) post) ∧
        δP σ₀' σA post = some true) →
      EvalStatementsContract π δ δP σ₀ σ'
        (List.mapIdx (fun j pred => Statement.assume s!"assume_{i + j}"
@@ -1936,7 +1936,7 @@ theorem substOldCorrect :
             have Hdef'' := UpdateStatesDefMonotone Hdef' Hup
             simp [Imperative.isDefined] at Hdef''
             refine ⟨Hdef'', Hdef.2⟩
-          . simp [List.Disjoint]
+          . simp [List.Disjoint']
             intros a Hin Heq
             simp [Heq] at *
             contradiction
@@ -2174,7 +2174,7 @@ theorem updatedStateOldWellFormedBoogieEvalTwoState :
       refine ⟨k :: vs,vs',σ₁,?_,Hwf.2⟩
       have Hdef1 : Imperative.isDefined σ₁ [k] := by
         apply InitVarsDefMonotone' (σ':=σ) (vs':=vs') <;> simp_all
-        . simp_all [List.Disjoint]
+        . simp_all [List.Disjoint']
         . simp [Imperative.isDefined, Option.isSome]
           split <;> simp_all
       have Hdef0 : Imperative.isDefined σ₀ [k] := by
@@ -2246,7 +2246,7 @@ theorem substsOldCorrect :
   Imperative.substStores σ₀ σ (createOldStoreSubst oldTrips) →
   Imperative.substDefined σ₀ σ (createOldStoreSubst oldTrips) →
   Imperative.substNodup (createOldStoreSubst oldTrips) →
-  oldTrips.unzip.1.unzip.1.Disjoint (OldExpressions.extractOldExprVars e) →
+  oldTrips.unzip.1.unzip.1.Disjoint' (OldExpressions.extractOldExprVars e) →
   δ σ₀ σ e = δ σ₀' σ (OldExpressions.substsOldExpr (createOldVarsSubst oldTrips) e) := by
   intros Hwfvr Hwfvl Hwfc Hwf2 Hnorm Hsubst Hdef Hnd Hdisj
   induction oldTrips generalizing e σ₀
@@ -2277,7 +2277,7 @@ theorem substsOldCorrect :
     rw [← ih (σ₀ := σ₁)] <;> try simp_all
     rw [← substOldCorrect (e := e) Hwfvr Hwfvl Hwfc Hwf2 Hnorm] <;> try simp_all
     . apply invStoresSubstHead Hsubst'
-      simp [List.Disjoint] at Hdisj
+      simp [List.Disjoint'] at Hdisj
       simp_all
     . -- substDefined
       simp [createOldStoreSubst, createOldStoreSubst.go] at Hdef
@@ -2310,7 +2310,7 @@ theorem substsOldCorrect :
       simp_all
     . -- Disjoint
       rw [substOld_create_replace] <;> try assumption
-      apply List.Disjoint.mono ?_ ?_ Hdisj
+      apply List.Disjoint'.mono ?_ ?_ Hdisj
       . simp
       . simp [List.removeAll]
   -/
@@ -3292,7 +3292,7 @@ theorem substOldPostSubset:
 
 open OldExpressions in
 theorem substsOldPostSubset:
-  oldTrips.unzip.1.unzip.1.Disjoint oldTrips.unzip.2 →
+  oldTrips.unzip.1.unzip.1.Disjoint' oldTrips.unzip.2 →
   (Imperative.HasVarsPure.getVars (substsOldExpr (createOldVarsSubst oldTrips) post)).Subset
     (Imperative.HasVarsPure.getVars post ++ (oldTrips.unzip.1.unzip.1)) := by
   intros Hdisj
@@ -3487,7 +3487,7 @@ theorem callElimStatementCorrect :
         simp only [List.append_assoc] at Hgennd' ⊢
         exact (List.nodup_append.mp Hgennd').2.1
       have Hinoutnd : (ListMap.keys proc.header.inputs ++ ListMap.keys proc.header.outputs).Nodup := by
-        apply List.Disjoint_Nodup_iff.mp
+        apply List.Disjoint'_Nodup_iff.mp
         refine ⟨Hinnd, Houtnd, ?_⟩
         . exact Hiodisj
       have Hndefgen : Imperative.isNotDefined σ'
@@ -3587,7 +3587,7 @@ theorem callElimStatementCorrect :
                 apply List.Forall_PredImplies Hwfargs
                 intros x Hp
                 exact WF.WFargProp.glarg Hp
-              . exact BoogieIdent.Disjoint_isTemp_isGlobOrLocl
+              . exact BoogieIdent.Disjoint'_isTemp_isGlobOrLocl
             . apply List.Sublist.nodup (List.sublist_append_left _ _) ?_
               . exact outTrips.unzip.fst.unzip.fst
               apply List.Sublist.nodup (List.sublist_append_left _ _) ?_
@@ -3626,7 +3626,7 @@ theorem callElimStatementCorrect :
           . -- Prove output variables initialization is correct
             apply EvalStatementsContractInitVars
             . assumption
-            . apply List.Disjoint_Nodup_iff.mp
+            . apply List.Disjoint'_Nodup_iff.mp
               refine ⟨?_, ?_, ?_⟩
               . exact (List.nodup_append.mp (List.nodup_append.mp Hgennd).1).2.1
               . simp [genOutExprIdentsTrip_snd Heqout]
@@ -3640,7 +3640,7 @@ theorem callElimStatementCorrect :
                   exact HoutTemp
                 . exact Hlhs.2
                 . apply List.PredDisjoint_PredImplies_right
-                  exact BoogieIdent.Disjoint_isTemp_isGlobOrLocl
+                  exact BoogieIdent.Disjoint'_isTemp_isGlobOrLocl
                   exact BoogieIdent.isLocl_isGlobOrLocl
             . simp
               refine ReadValuesUpdatedStates ?_ ?_ ?_
@@ -3653,13 +3653,13 @@ theorem callElimStatementCorrect :
                 . simp [← Heqouts]
                   exact Hlhs.2
                 . apply List.PredDisjoint_PredImplies_right
-                  exact BoogieIdent.Disjoint_isTemp_isGlobOrLocl
+                  exact BoogieIdent.Disjoint'_isTemp_isGlobOrLocl
                   exact BoogieIdent.isLocl_isGlobOrLocl
               . simp [← Heqouts]
                 exact Hevalouts
             . -- out vars generated are not defined
               apply UpdatedStatesDisjNotDefMonotone
-              . have Hnd' := List.Disjoint_Nodup_iff.mpr (List.nodup_append.mp Hgennd).1
+              . have Hnd' := List.Disjoint'_Nodup_iff.mpr (List.nodup_append.mp Hgennd).1
                 exact Hnd'.2.2
               . simp [← Hargtriplen]
               . apply UpdateStatesNotDefMonotone' (σ':=σ') ?_ Hupdate
@@ -3673,7 +3673,7 @@ theorem callElimStatementCorrect :
                                             oldTrips.unzip.fst.unzip.fst oldVals))
           . -- Prove old expressions initialization is correct
             apply EvalStatementsContractInitVars Hwfvars
-            . apply List.Disjoint_Nodup_iff.mp
+            . apply List.Disjoint'_Nodup_iff.mp
               refine ⟨?_, ?_, ?_⟩
               . exact (List.nodup_append.mp Hgennd).2.1
               . simp [genOldExprIdentsTrip_snd Heqold]
@@ -3688,7 +3688,7 @@ theorem callElimStatementCorrect :
                   . apply List.Forall_filter
                   . exact WFProgGlob Hwfp
                 . apply List.PredDisjoint_PredImplies_right
-                  exact BoogieIdent.Disjoint_isTemp_isGlobOrLocl
+                  exact BoogieIdent.Disjoint'_isTemp_isGlobOrLocl
                   exact BoogieIdent.isGlob_isGlobOrLocl
             . simp
               apply ReadValuesUpdatedStates
@@ -3703,7 +3703,7 @@ theorem callElimStatementCorrect :
                   . apply List.Forall_filter
                   . exact WFProgGlob Hwfp
                 . apply List.PredDisjoint_PredImplies_right
-                  exact BoogieIdent.Disjoint_isTemp_isGlobOrLocl
+                  exact BoogieIdent.Disjoint'_isTemp_isGlobOrLocl
                   exact BoogieIdent.isGlob_isGlobOrLocl
               apply ReadValuesUpdatedStates
               . simp [Hargtriplen]
@@ -3717,20 +3717,20 @@ theorem callElimStatementCorrect :
                   . apply List.Forall_filter
                   . exact WFProgGlob Hwfp
                 . apply List.PredDisjoint_PredImplies_right
-                  exact BoogieIdent.Disjoint_isTemp_isGlobOrLocl
+                  exact BoogieIdent.Disjoint'_isTemp_isGlobOrLocl
                   exact BoogieIdent.isGlob_isGlobOrLocl
               . simp at HoldVals
                 exact HoldVals
             . -- old vars generated are not defined
               apply UpdatedStatesDisjNotDefMonotone
               . simp only [List.append_assoc] at Hgennd
-                exact (List.Disjoint_Nodup_iff.mpr (List.nodup_append.mp Hgennd).2.1).2.2
+                exact (List.Disjoint'_Nodup_iff.mpr (List.nodup_append.mp Hgennd).2.1).2.2
               . simp [← Houttriplen]
               apply UpdatedStatesDisjNotDefMonotone
               . simp only [nodup_swap'] at Hgennd
                 simp only [← List.append_assoc] at Hgennd
-                have Hnd' := (List.Disjoint_Nodup_iff.mpr (List.nodup_append.mp Hgennd).1).2.2
-                exact List.Disjoint.symm Hnd'
+                have Hnd' := (List.Disjoint'_Nodup_iff.mpr (List.nodup_append.mp Hgennd).1).2.2
+                exact List.Disjoint'.symm Hnd'
               . simp [← Hargtriplen]
               . apply UpdateStatesNotDefMonotone' (σ:=σ) (σ':=σ') ?_ Hupdate
                 intros x Hin
@@ -3782,10 +3782,10 @@ theorem callElimStatementCorrect :
                   -- TODO: input names of function not overlapping with generated variables
                   -- can come from local/global distinction
                   conv => arg 1; rw [← List.append_assoc]
-                  refine List.Disjoint_Nodup_iff.mp ⟨?_, ?_, ?_⟩
+                  refine List.Disjoint'_Nodup_iff.mp ⟨?_, ?_, ?_⟩
                   . exact Hinoutnd
-                  . apply List.Disjoint_Nodup_iff.mp ⟨?_, ?_, ?_⟩
-                    . exact (List.Disjoint_Nodup_iff.mpr Hgennd).1
+                  . apply List.Disjoint'_Nodup_iff.mp ⟨?_, ?_, ?_⟩
+                    . exact (List.Disjoint'_Nodup_iff.mpr Hgennd).1
                     . exact Hlhs.1
                     . apply List.PredDisjoint_Disjoint
                         (P:=(BoogieIdent.isTemp ·))
@@ -3793,10 +3793,10 @@ theorem callElimStatementCorrect :
                       . exact HargTemp
                       . exact Hlhs.2
                       . apply List.PredDisjoint_PredImplies_right
-                        exact BoogieIdent.Disjoint_isTemp_isGlobOrLocl
+                        exact BoogieIdent.Disjoint'_isTemp_isGlobOrLocl
                         exact BoogieIdent.isLocl_isGlobOrLocl
-                  . apply List.Disjoint.symm
-                    apply List.Disjoint_app.mp ⟨?_, ?_⟩
+                  . apply List.Disjoint'.symm
+                    apply List.Disjoint'_app.mp ⟨?_, ?_⟩
                     . apply List.PredDisjoint_Disjoint
                         (P:=(BoogieIdent.isTemp ·))
                         (Q:=(BoogieIdent.isGlobOrLocl ·))
@@ -3804,7 +3804,7 @@ theorem callElimStatementCorrect :
                       . apply List.Forall_append.mpr ⟨?_, ?_⟩
                         . exact List.Forall_PredImplies Hinlc BoogieIdent.isLocl_isGlobOrLocl
                         . exact List.Forall_PredImplies Houtlc BoogieIdent.isLocl_isGlobOrLocl
-                      . exact BoogieIdent.Disjoint_isTemp_isGlobOrLocl
+                      . exact BoogieIdent.Disjoint'_isTemp_isGlobOrLocl
                     . intros x Hin1 Hin2
                       apply Hlhsdisj Hin1
                       simp_all
@@ -3861,8 +3861,8 @@ theorem callElimStatementCorrect :
                     simp [List.append_assoc]
                     simp [List.removeAll_app]
                     rw [List.removeAll_comm]
-                    apply List.Disjoint.removeAll
-                    apply List.Disjoint.mono_right
+                    apply List.Disjoint'.removeAll
+                    apply List.Disjoint'.mono_right
                     . exact List.removeAll_Sublist
                     . apply List.PredDisjoint_Disjoint
                         (P:=(BoogieIdent.isTemp ·))
@@ -3877,13 +3877,13 @@ theorem callElimStatementCorrect :
                         have Hwf := (List.Forall_mem_iff.mp wfpre _ HH).glvars
                         simp at Hwf
                         exact Hwf
-                      . exact BoogieIdent.Disjoint_isTemp_isGlobOrLocl
+                      . exact BoogieIdent.Disjoint'_isTemp_isGlobOrLocl
                   . have HH := prepostconditions_unwrap Hin
                     cases HH with
                     | intro label HH =>
                     cases HH with
                     | intro attr HH =>
-                    apply List.Disjoint_app.mp ⟨?_, ?_⟩
+                    apply List.Disjoint'_app.mp ⟨?_, ?_⟩
                     . apply List.PredDisjoint_Disjoint
                         (P:=(BoogieIdent.isTemp ·))
                         (Q:=(BoogieIdent.isGlobOrLocl ·))
@@ -3891,7 +3891,7 @@ theorem callElimStatementCorrect :
                       . have Hwf := (List.Forall_mem_iff.mp wfpre _ HH).glvars
                         simp at Hwf
                         exact Hwf
-                      . exact BoogieIdent.Disjoint_isTemp_isGlobOrLocl
+                      . exact BoogieIdent.Disjoint'_isTemp_isGlobOrLocl
                     . have Hpre := (List.Forall_mem_iff.mp wfpre _ HH)
                       have Hlcl := List.Forall_mem_iff.mp Hpre.lvars
                       have Hgl := List.Forall_mem_iff.mp Hpre.glvars
@@ -3904,7 +3904,7 @@ theorem callElimStatementCorrect :
                         -- disjoint of local and global
                         have Hlhs := List.Forall_mem_iff.mp Hlhs.2
                         specialize Hlhs x Hin1
-                        exact BoogieIdent.Disjoint_isLocl_isGlob _ Hlhs Hg
+                        exact BoogieIdent.Disjoint'_isLocl_isGlob _ Hlhs Hg
                       | inr Hl =>
                         -- disjoint because of WF
                         specialize Hlcl x Hin2 Hl
@@ -3969,7 +3969,7 @@ theorem callElimStatementCorrect :
                         . apply List.Forall_append.mpr ⟨HargTemp, HoutTemp⟩
                         . exact Hlhs.2
                         . apply List.PredDisjoint_PredImplies_right
-                          exact BoogieIdent.Disjoint_isTemp_isGlobOrLocl
+                          exact BoogieIdent.Disjoint'_isTemp_isGlobOrLocl
                           exact BoogieIdent.isLocl_isGlobOrLocl
                       . exact Hevalouts
                   . exact Hrdinout
@@ -4009,7 +4009,7 @@ theorem callElimStatementCorrect :
                         exact HoldTemp
                       . exact Hlhs.2
                       . apply List.PredDisjoint_PredImplies_right
-                        exact BoogieIdent.Disjoint_isTemp_isGlobOrLocl
+                        exact BoogieIdent.Disjoint'_isTemp_isGlobOrLocl
                         exact BoogieIdent.isLocl_isGlobOrLocl
                     . apply ReadValuesUpdatedStates
                       . simp [Houttriplen]
@@ -4020,7 +4020,7 @@ theorem callElimStatementCorrect :
                           exact HoutTemp
                         . exact Hlhs.2
                         . apply List.PredDisjoint_PredImplies_right
-                          exact BoogieIdent.Disjoint_isTemp_isGlobOrLocl
+                          exact BoogieIdent.Disjoint'_isTemp_isGlobOrLocl
                           exact BoogieIdent.isLocl_isGlobOrLocl
                       . apply ReadValuesUpdatedStates
                         . simp [Hargtriplen]
@@ -4031,7 +4031,7 @@ theorem callElimStatementCorrect :
                             exact HargTemp
                           . exact Hlhs.2
                           . apply List.PredDisjoint_PredImplies_right
-                            exact BoogieIdent.Disjoint_isTemp_isGlobOrLocl
+                            exact BoogieIdent.Disjoint'_isTemp_isGlobOrLocl
                             exact BoogieIdent.isLocl_isGlobOrLocl
                         . exact Hevalouts
               . -- Prove havocs correct
@@ -4083,11 +4083,11 @@ theorem callElimStatementCorrect :
                   simp [Imperative.substNodup]
                   rw [List.map_fst_zip]
                   rw [List.map_snd_zip]
-                  . apply List.Disjoint_Nodup_iff.mp
+                  . apply List.Disjoint'_Nodup_iff.mp
                     refine ⟨Hinoutnd, ?_, ?_⟩
                     . simp [← List.append_assoc] at Hgennd
                       have HH := List.nodup_append.mp Hgennd
-                      apply List.Disjoint_Nodup_iff.mp
+                      apply List.Disjoint'_Nodup_iff.mp
                       refine ⟨?_, ?_, ?_⟩
                       . exact (List.nodup_append.mp HH.1).1
                       . exact Hlhs.1
@@ -4097,10 +4097,10 @@ theorem callElimStatementCorrect :
                         . exact HargTemp
                         . exact Hlhs.2
                         . apply List.PredDisjoint_PredImplies_right
-                          exact BoogieIdent.Disjoint_isTemp_isGlobOrLocl
+                          exact BoogieIdent.Disjoint'_isTemp_isGlobOrLocl
                           exact BoogieIdent.isLocl_isGlobOrLocl
-                    . apply List.Disjoint.symm
-                      apply List.Disjoint_app.mp ⟨?_, ?_⟩
+                    . apply List.Disjoint'.symm
+                      apply List.Disjoint'_app.mp ⟨?_, ?_⟩
                       . apply List.PredDisjoint_Disjoint
                           (P:=(BoogieIdent.isTemp ·))
                           (Q:=(BoogieIdent.isGlobOrLocl ·))
@@ -4108,7 +4108,7 @@ theorem callElimStatementCorrect :
                         . apply List.Forall_append.mpr ⟨?_, ?_⟩
                           . exact List.Forall_PredImplies Hinlc BoogieIdent.isLocl_isGlobOrLocl
                           . exact List.Forall_PredImplies Houtlc BoogieIdent.isLocl_isGlobOrLocl
-                        . exact BoogieIdent.Disjoint_isTemp_isGlobOrLocl
+                        . exact BoogieIdent.Disjoint'_isTemp_isGlobOrLocl
                       . intros x Hin1 Hin2
                         apply Hlhsdisj Hin1
                         simp_all
@@ -4158,14 +4158,14 @@ theorem callElimStatementCorrect :
                   refine ⟨?_, ?_, ?_⟩
                   . -- store invariant
                     have Hndrd1 : (ListMap.keys proc.header.outputs ++ proc.spec.modifies).Nodup := by
-                      refine List.Disjoint_Nodup_iff.mp ⟨Houtnd, Hmodsnd, ?_⟩
+                      refine List.Disjoint'_Nodup_iff.mp ⟨Houtnd, Hmodsnd, ?_⟩
                       -- disjoint between local and global
                       apply List.PredDisjoint_Disjoint
                           (P:=(BoogieIdent.isLocl ·))
                           (Q:=(BoogieIdent.isGlob ·))
                       . exact Houtlc
                       . exact Hmodglob
-                      . exact BoogieIdent.Disjoint_isLocl_isGlob
+                      . exact BoogieIdent.Disjoint'_isLocl_isGlob
                     have Hrd1 := UpdateStatesReadValues Houtnd Hup1
                     have Hrd2 := UpdateStatesReadValues Hmodsnd Hup2
                     have Heq2 := ReadValuesInjective Hrd2 Hrd'.2.2
@@ -4217,7 +4217,7 @@ theorem callElimStatementCorrect :
                             rw [List.unzip_zip]
                             rw [List.unzip_zip]
                             simp
-                            . exact List.DisjointAppRight' Hlhsdisj
+                            . exact List.Disjoint'AppRight' Hlhsdisj
                             . simp [← Heq2]
                               exact ReadValuesLength Hrd2
                             . have Hlen := ReadValuesLength Hrd'.2.1
@@ -4235,8 +4235,8 @@ theorem callElimStatementCorrect :
                       . exact (List.nodup_append.mp (List.nodup_append.mp Hgennd).2.1).1
                       . simp [Holdtriplen]
                       . exact (List.nodup_append.mp (List.nodup_append.mp Hgennd).2.1).2.1
-                    . apply List.Disjoint.symm
-                      exact List.removeAll_Disjoint
+                    . apply List.Disjoint'.symm
+                      exact List.removeAll_Disjoint'
                   . -- TODO : all vars in substPost is a subset of subst ++ fst fst oldTrips
                     have Hin := postconditions_subst_unwrap HinSubst
                     cases Hin with
@@ -4251,14 +4251,14 @@ theorem callElimStatementCorrect :
                     have Hgl := List.Forall_mem_iff.mp Hpost.glvars
                     simp at Hlcl Hgl
                     intros x Hin1 Hin2
-                    have Hdisj : oldTrips.unzip.fst.unzip.fst.Disjoint oldTrips.unzip.snd := by
+                    have Hdisj : oldTrips.unzip.fst.unzip.fst.Disjoint' oldTrips.unzip.snd := by
                       apply List.PredDisjoint_Disjoint
                         (P:=(BoogieIdent.isTemp ·))
                         (Q:=(BoogieIdent.isGlob ·))
                       . simp; exact HoldTemp
                       . simp; exact Holdsndglob
                       . apply List.PredDisjoint_PredImplies_right
-                        exact BoogieIdent.Disjoint_isTemp_isGlobOrLocl
+                        exact BoogieIdent.Disjoint'_isTemp_isGlobOrLocl
                         exact BoogieIdent.isGlob_isGlobOrLocl
                     have Hsubset := substsOldPostSubset (post:=(OldExpressions.normalizeOldExpr post)) (oldTrips:=oldTrips) Hdisj
                     have Hin : x ∈ (Imperative.HasVarsPure.getVars (P:=Expression) (OldExpressions.normalizeOldExpr post) ++
@@ -4274,7 +4274,7 @@ theorem callElimStatementCorrect :
                         -- disjoint of global/local with temp
                         have Hin := normalizeOldExprInVars Hin
                         specialize Hgl x Hin
-                        apply BoogieIdent.Disjoint_isTemp_isGlobOrLocl
+                        apply BoogieIdent.Disjoint'_isTemp_isGlobOrLocl
                         . exact List.Forall_mem_iff.mp HargTemp x Hin1
                         . exact Hgl
                       | inr Hin =>
@@ -4298,7 +4298,7 @@ theorem callElimStatementCorrect :
                         -- x is global
                         have Hlhs := List.Forall_mem_iff.mp Hlhs.2
                         specialize Hlhs x Hin1
-                        exact BoogieIdent.Disjoint_isLocl_isGlob _ Hlhs Hg
+                        exact BoogieIdent.Disjoint'_isLocl_isGlob _ Hlhs Hg
                       | inr Hl =>
                         -- x is local, use wf
                         specialize Hlcl x Hin Hl
@@ -4307,7 +4307,7 @@ theorem callElimStatementCorrect :
                     | inr Hin =>
                       -- oldTrips disjoint from lhs
                       simp only [List.unzip_fst, List.map_map] at Hin
-                      apply BoogieIdent.Disjoint_isTemp_isGlobOrLocl
+                      apply BoogieIdent.Disjoint'_isTemp_isGlobOrLocl
                       . exact List.Forall_mem_iff.mp HoldTemp x Hin
                       . apply BoogieIdent.isLocl_isGlobOrLocl
                         exact List.Forall_mem_iff.mp Hlhs.2 _ Hin1
@@ -4353,24 +4353,24 @@ theorem callElimStatementCorrect :
                                 simp [InitStatesUpdated Hinitout]
                                 apply UpdatedStatesDisjNotDefMonotone
                                 . -- Disjoint between local and temp
-                                  apply List.Disjoint.symm
+                                  apply List.Disjoint'.symm
                                   apply List.PredDisjoint_Disjoint
                                     (P:=(BoogieIdent.isTemp ·))
                                     (Q:=(BoogieIdent.isGlobOrLocl ·))
                                   . exact List.Forall_append.mpr ⟨HoutTemp, HoldTemp⟩
                                   . exact List.Forall_PredImplies Houtlc BoogieIdent.isLocl_isGlobOrLocl
-                                  . exact BoogieIdent.Disjoint_isTemp_isGlobOrLocl
+                                  . exact BoogieIdent.Disjoint'_isTemp_isGlobOrLocl
                                 . simp [Houtlen]
                                 . simp [InitStatesUpdated Hinitin]
                                   apply UpdatedStatesDisjNotDefMonotone
                                   . -- Disjoint between local and temp
-                                    apply List.Disjoint.symm
+                                    apply List.Disjoint'.symm
                                     apply List.PredDisjoint_Disjoint
                                       (P:=(BoogieIdent.isTemp ·))
                                       (Q:=(BoogieIdent.isGlobOrLocl ·))
                                     . exact List.Forall_append.mpr ⟨HoutTemp, HoldTemp⟩
                                     . exact List.Forall_PredImplies Hinlc BoogieIdent.isLocl_isGlobOrLocl
-                                    . exact BoogieIdent.Disjoint_isTemp_isGlobOrLocl
+                                    . exact BoogieIdent.Disjoint'_isTemp_isGlobOrLocl
                                   . simp [← Hargtriplen, Harglen, ← Heqargs]
                                   . have Hndef := (Imperative.isNotDefinedApp' Hndefgen).2
                                     exact UpdateStatesNotDefMonotone' Hndef Hupdate
@@ -4396,7 +4396,7 @@ theorem callElimStatementCorrect :
                           apply ReadValuesSubstStores
                           apply UpdateStatesReadValuesMonotone (σ:=σAO) (vs:=oldVals) _ ?_ Hhav
                           . -- Nodup
-                            apply List.Disjoint_Nodup_iff.mp
+                            apply List.Disjoint'_Nodup_iff.mp
                             refine ⟨?_, ?_, ?_⟩
                             . have Heq := genOldExprIdentsTrip_snd Heqold
                               simp [Heq]
@@ -4404,7 +4404,7 @@ theorem callElimStatementCorrect :
                               apply eraseDups_Nodup
                             . exact Houtnd
                             . -- Disjoint between local and temp
-                              apply List.Disjoint.symm
+                              apply List.Disjoint'.symm
                               apply List.PredDisjoint_Disjoint
                                   (P:=(BoogieIdent.isLocl ·))
                                   (Q:=(BoogieIdent.isGlob ·))
@@ -4413,7 +4413,7 @@ theorem callElimStatementCorrect :
                                 apply List.Forall_PredImplies
                                 . apply List.Forall_filter
                                 . exact WFProgGlob Hwfp
-                              . exact BoogieIdent.Disjoint_isLocl_isGlob
+                              . exact BoogieIdent.Disjoint'_isLocl_isGlob
                           . apply InitStatesReadValuesMonotone (σ:=σA) ?_ Hinitout
                             . apply InitStatesReadValuesMonotone (σ:=σ) ?_ Hinitin
                               simp only [List.unzip_snd]
@@ -4443,7 +4443,7 @@ theorem callElimStatementCorrect :
                           simp [← List.unzip_fst, ← List.unzip_snd]
                           rw [List.unzip_zip]
                           simp
-                          apply List.Disjoint_Nodup_iff.mp
+                          apply List.Disjoint'_Nodup_iff.mp
                           . refine ⟨?_, ?_, ?_⟩
                             . -- oldTrips.unzip.2 Nodup. needs some equivalence
                               have Heq := genOldExprIdentsTrip_snd Heqold
@@ -4451,7 +4451,7 @@ theorem callElimStatementCorrect :
                               apply filter_nodup
                               apply eraseDups_Nodup
                             . exact (List.nodup_append.mp (List.nodup_append.mp Hgennd).2.1).2.1
-                            . apply List.Disjoint.symm
+                            . apply List.Disjoint'.symm
                               apply List.PredDisjoint_Disjoint
                                   (P:=(BoogieIdent.isTemp ·))
                                   (Q:=(BoogieIdent.isGlob ·))
@@ -4461,10 +4461,10 @@ theorem callElimStatementCorrect :
                                 . apply List.Forall_filter
                                 . exact WFProgGlob Hwfp
                               . apply List.PredDisjoint_PredImplies_right
-                                exact BoogieIdent.Disjoint_isTemp_isGlobOrLocl
+                                exact BoogieIdent.Disjoint'_isTemp_isGlobOrLocl
                                 exact BoogieIdent.isGlob_isGlobOrLocl
                           . simp [Holdtriplen]
-                        . apply List.Disjoint_Subset (ks:=(Imperative.HasVarsPure.getVars post))
+                        . apply List.Disjoint'_Subset (ks:=(Imperative.HasVarsPure.getVars post))
                           . apply List.PredDisjoint_Disjoint
                                 (P:=(BoogieIdent.isTemp ·))
                                 (Q:=(BoogieIdent.isGlobOrLocl ·))
@@ -4478,7 +4478,7 @@ theorem callElimStatementCorrect :
                               have Hwf := (List.Forall_mem_iff.mp wfpost _ HH).glvars
                               simp at Hwf
                               exact Hwf
-                            . exact BoogieIdent.Disjoint_isTemp_isGlobOrLocl
+                            . exact BoogieIdent.Disjoint'_isTemp_isGlobOrLocl
                           . refine extractedOldVarsInVars ?_
                             have HH := prepostconditions_unwrap Hin.1
                             cases HH with
@@ -4505,7 +4505,7 @@ theorem callElimStatementCorrect :
                         have Hwf := (List.Forall_mem_iff.mp wfpost _ HH).glvars
                         simp at Hwf
                         exact Hwf
-                      . exact BoogieIdent.Disjoint_isTemp_isGlobOrLocl
+                      . exact BoogieIdent.Disjoint'_isTemp_isGlobOrLocl
                     apply EvalExpressionUpdatedStates <;> try assumption
                     . simp [Houttriplen]
                     . exact (List.nodup_append.mp (List.nodup_append.mp Hgennd).2.1).1
@@ -4521,7 +4521,7 @@ theorem callElimStatementCorrect :
                         have Hwf := (List.Forall_mem_iff.mp wfpost _ HH).glvars
                         simp at Hwf
                         exact Hwf
-                      . exact BoogieIdent.Disjoint_isTemp_isGlobOrLocl
+                      . exact BoogieIdent.Disjoint'_isTemp_isGlobOrLocl
                     apply (Hwfb _ _ _).1.1.mpr
                     exact Hpost.2
                 . -- substStores, provable
@@ -4532,7 +4532,7 @@ theorem callElimStatementCorrect :
                       . -- read values
                         apply UpdateStatesReadValuesMonotone (σ:=σO) _ ?_ Hup2
                         . -- nodup between inputs and modifies
-                          apply List.Disjoint_Nodup_iff.mp
+                          apply List.Disjoint'_Nodup_iff.mp
                           refine ⟨?_, ?_, ?_⟩
                           . exact Hinnd
                           . exact Hmodsnd
@@ -4542,7 +4542,7 @@ theorem callElimStatementCorrect :
                                 (Q:=(BoogieIdent.isGlob ·))
                             . exact Hinlc
                             . exact Hmodglob
-                            . exact BoogieIdent.Disjoint_isLocl_isGlob
+                            . exact BoogieIdent.Disjoint'_isLocl_isGlob
                         . apply UpdateStatesReadValuesMonotone (σ:=σAO) _ ?_ Hup1
                           . exact Hinoutnd
                           . apply InitStatesReadValuesMonotone (σ:=σA) _ Hinitout
@@ -4559,24 +4559,24 @@ theorem callElimStatementCorrect :
                           simp [InitStatesUpdated Hinitout]
                           apply UpdatedStatesDisjNotDefMonotone
                           . -- Disjoint between local and temp
-                            apply List.Disjoint.symm
+                            apply List.Disjoint'.symm
                             apply List.PredDisjoint_Disjoint
                               (P:=(BoogieIdent.isTemp ·))
                               (Q:=(BoogieIdent.isGlobOrLocl ·))
                             . exact List.Forall_append.mpr ⟨HoutTemp, HoldTemp⟩
                             . refine List.Forall_PredImplies Houtlc BoogieIdent.isLocl_isGlobOrLocl
-                            . exact BoogieIdent.Disjoint_isTemp_isGlobOrLocl
+                            . exact BoogieIdent.Disjoint'_isTemp_isGlobOrLocl
                           . simp [Houtlen]
                           . simp [InitStatesUpdated Hinitin]
                             apply UpdatedStatesDisjNotDefMonotone
                             . -- Disjoint between local and temp
-                              apply List.Disjoint.symm
+                              apply List.Disjoint'.symm
                               apply List.PredDisjoint_Disjoint
                                 (P:=(BoogieIdent.isTemp ·))
                                 (Q:=(BoogieIdent.isGlobOrLocl ·))
                               . exact List.Forall_append.mpr ⟨HoutTemp, HoldTemp⟩
                               . refine List.Forall_PredImplies Hinlc BoogieIdent.isLocl_isGlobOrLocl
-                              . exact BoogieIdent.Disjoint_isTemp_isGlobOrLocl
+                              . exact BoogieIdent.Disjoint'_isTemp_isGlobOrLocl
                             . simp [← Hargtriplen, Harglen, ← Heqargs]
                             . have Hndef := (Imperative.isNotDefinedApp' Hndefgen).2
                               exact UpdateStatesNotDefMonotone' Hndef Hupdate
@@ -4591,7 +4591,7 @@ theorem callElimStatementCorrect :
                           (Q:=(BoogieIdent.isGlobOrLocl ·))
                         . exact HoldTemp
                         . refine List.Forall_PredImplies Houtlc BoogieIdent.isLocl_isGlobOrLocl
-                        . exact BoogieIdent.Disjoint_isTemp_isGlobOrLocl
+                        . exact BoogieIdent.Disjoint'_isTemp_isGlobOrLocl
                       . apply ReadValuesUpdatedStates
                         . simp [Houttriplen]
                         . -- Disjoint between local and temp
@@ -4600,18 +4600,18 @@ theorem callElimStatementCorrect :
                             (Q:=(BoogieIdent.isGlobOrLocl ·))
                           . exact HoutTemp
                           . refine List.Forall_PredImplies Houtlc BoogieIdent.isLocl_isGlobOrLocl
-                          . exact BoogieIdent.Disjoint_isTemp_isGlobOrLocl
+                          . exact BoogieIdent.Disjoint'_isTemp_isGlobOrLocl
                         . exact Hrd'.2.1
                   . apply ReadValuesApp
                     . apply ReadValuesUpdatedStates
                       . simp [Holdtriplen]
                       . simp only [nodup_swap'] at Hgennd
                         simp only [List.append_assoc] at Hgennd
-                        exact (List.Disjoint_Nodup_iff.mpr (List.nodup_append.mp Hgennd).2.1).2.2
+                        exact (List.Disjoint'_Nodup_iff.mpr (List.nodup_append.mp Hgennd).2.1).2.2
                       . apply ReadValuesUpdatedStates
                         . simp [Houttriplen]
                         . simp only [← List.append_assoc] at Hgennd
-                          exact List.Disjoint.symm (List.Disjoint_Nodup_iff.mpr (List.nodup_append.mp Hgennd).1).2.2
+                          exact List.Disjoint'.symm (List.Disjoint'_Nodup_iff.mpr (List.nodup_append.mp Hgennd).1).2.2
                         . apply ReadValuesUpdatedStatesSame
                           . simp [Hargtriplen]
                           . exact (List.nodup_append.mp Hgennd).1
@@ -4626,7 +4626,7 @@ theorem callElimStatementCorrect :
                           . exact HoldTemp
                           . exact Hlhs.2
                           . apply List.PredDisjoint_PredImplies_right
-                            exact BoogieIdent.Disjoint_isTemp_isGlobOrLocl
+                            exact BoogieIdent.Disjoint'_isTemp_isGlobOrLocl
                             exact BoogieIdent.isLocl_isGlobOrLocl
                         . apply ReadValuesUpdatedStates
                           . simp [Houttriplen]
@@ -4637,7 +4637,7 @@ theorem callElimStatementCorrect :
                             . exact HoutTemp
                             . exact Hlhs.2
                             . apply List.PredDisjoint_PredImplies_right
-                              exact BoogieIdent.Disjoint_isTemp_isGlobOrLocl
+                              exact BoogieIdent.Disjoint'_isTemp_isGlobOrLocl
                               exact BoogieIdent.isLocl_isGlobOrLocl
                           . apply ReadValuesUpdatedStates
                             . simp [Hargtriplen]
@@ -4648,7 +4648,7 @@ theorem callElimStatementCorrect :
                               . exact HargTemp
                               . exact Hlhs.2
                               . apply List.PredDisjoint_PredImplies_right
-                                exact BoogieIdent.Disjoint_isTemp_isGlobOrLocl
+                                exact BoogieIdent.Disjoint'_isTemp_isGlobOrLocl
                                 exact BoogieIdent.isLocl_isGlobOrLocl
                             . apply ReadValuesUpdatedStates
                               . exact ReadValuesLength Hrd'.2.2
@@ -4684,7 +4684,7 @@ theorem callElimStatementCorrect :
                   . apply List.Forall_append.mpr ⟨?_, ?_⟩
                     . exact List.Forall_PredImplies Hlhs.2 BoogieIdent.isLocl_isGlobOrLocl
                     . exact List.Forall_PredImplies Hmodglob BoogieIdent.isGlob_isGlobOrLocl
-                  . exact BoogieIdent.Disjoint_isTemp_isGlobOrLocl
+                  . exact BoogieIdent.Disjoint'_isTemp_isGlobOrLocl
                 . simp_all
                 . simp_all
               . -- Disjoint between old labels and lhs, modified, and modvals
@@ -4699,7 +4699,7 @@ theorem callElimStatementCorrect :
                 . apply List.Forall_append.mpr ⟨?_, ?_⟩
                   . exact List.Forall_PredImplies Hlhs.2 BoogieIdent.isLocl_isGlobOrLocl
                   . exact List.Forall_PredImplies Hmodglob BoogieIdent.isGlob_isGlobOrLocl
-                . exact BoogieIdent.Disjoint_isTemp_isGlobOrLocl
+                . exact BoogieIdent.Disjoint'_isTemp_isGlobOrLocl
                 . have Hlen := UpdateStatesLength Hupdate
                   omega
                 . simp_all
@@ -4715,7 +4715,7 @@ theorem callElimStatementCorrect :
                 . apply List.Forall_append.mpr ⟨?_, ?_⟩
                   . exact List.Forall_PredImplies Hlhs.2 BoogieIdent.isLocl_isGlobOrLocl
                   . exact List.Forall_PredImplies Hmodglob BoogieIdent.isGlob_isGlobOrLocl
-                . exact BoogieIdent.Disjoint_isTemp_isGlobOrLocl
+                . exact BoogieIdent.Disjoint'_isTemp_isGlobOrLocl
                 . have Hlen := UpdateStatesLength Hupdate
                   omega
                 . simp_all

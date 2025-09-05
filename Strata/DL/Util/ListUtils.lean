@@ -9,7 +9,7 @@
   properties on lists.
 -/
 
-/-- Two predicates `P` and `Q` are disjoint, that is, they cannot both hold on a
+/-- Two predicates `P` and `Q` are Disjoint', that is, they cannot both hold on a
     same instance of type `α` -/
 def PredDisjoint (P Q : α → Prop) : Prop := ∀ a, P a → Q a → False
 
@@ -81,10 +81,10 @@ def List.replaceAll [BEq α] : List α → α → α → List α
     | false => a :: replaceAll as b c
 
 
-/-- `Disjoint l₁ l₂` means that `l₁` and `l₂` have no elements in common.
+/-- `Disjoint' l₁ l₂` means that `l₁` and `l₂` have no elements in common.
 Taken from https://github.com/leanprover-community/batteries/blob/3613427d66262c4e25e19b40a6a49242e94ba072/Batteries/Data/List/Basic.lean#L512-L514
 -/
-def List.Disjoint (l₁ l₂ : List α) : Prop :=
+def List.Disjoint' (l₁ l₂ : List α) : Prop :=
   ∀ ⦃a⦄, a ∈ l₁ → a ∈ l₂ → False
 
 theorem List.removeAll_Sublist [BEq α] {xs ys : List α}:
@@ -93,22 +93,22 @@ theorem List.removeAll_Sublist [BEq α] {xs ys : List α}:
   case nil => simp_all
   case cons h t ih => simp [List.removeAll]
 
-theorem List.removeAll_Disjoint  [BEq α] [LawfulBEq α] {xs ys : List α}:
-  (xs.removeAll ys).Disjoint ys := by
-  induction xs <;> simp [removeAll, Disjoint] at *
+theorem List.removeAll_Disjoint'  [BEq α] [LawfulBEq α] {xs ys : List α}:
+  (xs.removeAll ys).Disjoint' ys := by
+  induction xs <;> simp [removeAll, List.Disjoint'] at *
 
-theorem List.Disjoint.mono (h₁ : a.Sublist b) (h₂ : c.Sublist d) :
-  Disjoint b d → Disjoint a c := λ Hdis _ Hin1 Hin2 ↦
+theorem List.Disjoint'.mono (h₁ : a.Sublist b) (h₂ : c.Sublist d) :
+  List.Disjoint' b d → List.Disjoint' a c := λ Hdis _ Hin1 Hin2 ↦
   Hdis (Sublist.mem Hin1 h₁) (Sublist.mem Hin2 h₂)
 
-theorem List.Disjoint.mono_left (h : a.Sublist b) :
-  Disjoint b c → Disjoint a c := λ Hdis ↦ mono h (Sublist.refl c) Hdis
+theorem List.Disjoint'.mono_left (h : a.Sublist b) :
+  List.Disjoint' b c → List.Disjoint' a c := λ Hdis ↦ mono h (Sublist.refl c) Hdis
 
-theorem List.Disjoint.mono_right (h : c.Sublist d) :
-  Disjoint a d → Disjoint a c := λ Hdis ↦ mono (Sublist.refl a) h Hdis
+theorem List.Disjoint'.mono_right (h : c.Sublist d) :
+  List.Disjoint' a d → List.Disjoint' a c := λ Hdis ↦ mono (Sublist.refl a) h Hdis
 
-theorem List.Disjoint.removeAll [BEq α] [LawfulBEq α ] {xs ys zs: List α} :
-  Disjoint xs ys → Disjoint (zs ++ xs) (ys.removeAll zs) := by
+theorem List.Disjoint'.removeAll [BEq α] [LawfulBEq α ] {xs ys zs: List α} :
+  List.Disjoint' xs ys → List.Disjoint' (zs ++ xs) (ys.removeAll zs) := by
   intros Hdisj a Hin1 Hin2
   simp_all only [mem_append]
   apply @Hdisj a
@@ -121,29 +121,29 @@ theorem List.Disjoint.removeAll [BEq α] [LawfulBEq α ] {xs ys zs: List α} :
   . have Hsub := List.removeAll_Sublist (xs:=ys) (ys:=zs)
     exact Sublist.mem Hin2 Hsub
 
-theorem List.Disjoint_cons_head : (h :: t).Disjoint l → ¬h ∈ l := by
+theorem List.Disjoint'_cons_head : (h :: t).Disjoint' l → ¬h ∈ l := by
   intros Hdis Hin
-  simp [Disjoint] at Hdis
+  simp [List.Disjoint'] at Hdis
   exact Hdis.1 Hin
 
-theorem List.Disjoint_cons_tail : (h :: t).Disjoint l → t.Disjoint l := by
+theorem List.Disjoint'_cons_tail : (h :: t).Disjoint' l → t.Disjoint' l := by
   intros Hdis Hin
-  simp [Disjoint] at Hdis
+  simp [List.Disjoint'] at Hdis
   exact Hdis.2 Hin
 
-theorem List.Disjoint_app :
-  List.Disjoint l1 l ∧ l2.Disjoint l ↔ (l1 ++ l2).Disjoint l := by
+theorem List.Disjoint'_app :
+  List.Disjoint' l1 l ∧ l2.Disjoint' l ↔ (l1 ++ l2).Disjoint' l := by
   apply Iff.intro
   . induction l1
-    case nil => simp [Disjoint]
+    case nil => simp [List.Disjoint']
     case cons h t ih =>
     intros Hnin x Hin1 Hin2
-    specialize ih ⟨List.Disjoint_cons_tail Hnin.1, Hnin.2⟩
+    specialize ih ⟨List.Disjoint'_cons_tail Hnin.1, Hnin.2⟩
     simp at Hin1
     cases Hin1 with
     | inl Hin =>
       simp_all
-      exact Disjoint_cons_head Hnin.1 Hin2
+      exact List.Disjoint'_cons_head Hnin.1 Hin2
     | inr Hin =>
       cases Hin with
     | inl Hin =>
@@ -152,18 +152,18 @@ theorem List.Disjoint_app :
     | inr Hin =>
       exact Hnin.2 Hin Hin2
   . induction l1
-    case nil => simp [Disjoint]
+    case nil => simp [List.Disjoint']
     case cons h t ih =>
     intros Hnin
     refine ⟨?_, ?_⟩
     . intros x Hin1 Hin2
       apply Hnin _ Hin2
       exact mem_append_left l2 Hin1
-    . specialize ih (Disjoint_cons_tail Hnin)
+    . specialize ih (List.Disjoint'_cons_tail Hnin)
       exact ih.2
 
-theorem List.Disjoint_Nodup_iff :
-List.Nodup a ∧ b.Nodup ∧ a.Disjoint b ↔ (a ++ b).Nodup := by
+theorem List.Disjoint'_Nodup_iff :
+List.Nodup a ∧ b.Nodup ∧ a.Disjoint' b ↔ (a ++ b).Nodup := by
 apply Iff.intro
 . intros H
   refine nodup_append.mpr ?_
@@ -185,32 +185,32 @@ theorem List.Subset.empty : [].Subset s := by
 /-- From Mathlib4
     https://github.com/leanprover-community/mathlib4/blob/ccca47289b3f94a9572a38975e0876c139690a21/Mathlib/Data/List/Lattice.lean#L39-L40
     -/
-theorem List.Disjoint.symm : Disjoint a b → Disjoint b a := fun H _ Hin1 Hin2 => H Hin2 Hin1
+theorem List.Disjoint'.symm : List.Disjoint' a b → List.Disjoint' b a := fun H _ Hin1 Hin2 => H Hin2 Hin1
 
-theorem List.Disjoint.symm_app (d : Disjoint l (l₁ ++ l₂))
-  : Disjoint l (l₂ ++ l₁) := fun _ Hin1 Hin2 => d Hin1
+theorem List.Disjoint'.symm_app (d : List.Disjoint' l (l₁ ++ l₂))
+  : List.Disjoint' l (l₂ ++ l₁) := fun _ Hin1 Hin2 => d Hin1
         (mem_append.mpr $ Or.symm (mem_append.mp Hin2))
 
-theorem List.Disjoint_Subset : Disjoint vs ks → ks'.Subset ks → vs.Disjoint ks' := by
+theorem List.Disjoint'_Subset : List.Disjoint' vs ks → ks'.Subset ks → vs.Disjoint' ks' := by
   intros Hdis Hsub
-  simp [Disjoint, List.Subset] at *
+  simp [List.Disjoint', List.Subset] at *
   intros a Hin1 Hin2
   specialize Hdis Hin1
   simp_all
 
-theorem List.DisjointAppLeft' :
-  Disjoint vs (ks ++ ks') → Disjoint vs ks' := by
+theorem List.Disjoint'AppLeft' :
+  List.Disjoint' vs (ks ++ ks') → List.Disjoint' vs ks' := by
   intros Hdist h
-  simp [Disjoint] at *
+  simp [List.Disjoint'] at *
   intros Hin1 Hin2
   specialize Hdist Hin1
   simp_all
 
-theorem List.DisjointAppRight' :
-  List.Disjoint vs (ks ++ ks') → List.Disjoint vs ks := by
+theorem List.Disjoint'AppRight' :
+  List.Disjoint' vs (ks ++ ks') → List.Disjoint' vs ks := by
   intros Hdist
-  have Hdist' := List.Disjoint.symm_app Hdist
-  exact List.DisjointAppLeft' Hdist'
+  have Hdist' := List.Disjoint'.symm_app Hdist
+  exact List.Disjoint'AppLeft' Hdist'
 
 theorem List.replaceAll_app {α : Type} [DecidableEq α] {h h' : α} {as bs : List α}:
   List.replaceAll as h h' ++ List.replaceAll bs h h' = List.replaceAll (as ++ bs) h h' := by
@@ -401,7 +401,7 @@ theorem List.PredDisjoint_Disjoint :
   Forall P as →
   Forall Q bs →
   PredDisjoint P Q →
-  Disjoint as bs := by
+  List.Disjoint' as bs := by
 intros H1 H2 Hdis x Hin1 Hin2
 apply Hdis x
 . exact (List.Forall_mem_iff.mp H1) x Hin1
@@ -426,7 +426,7 @@ theorem List.PredDisjoint_PredImplies_right :
 
 theorem List.Forall_filter :
   Forall (P ·) (List.filter P l) := by
-  apply Forall_mem_iff.mpr
+  apply List.Forall_mem_iff.mpr
   intros x Hin
   simp at Hin
   exact Hin.2

@@ -54,7 +54,7 @@ structure WFcallProp (p : Program) (lhs : List Expression.Ident) (procName : Str
   outlen : (Program.Procedure.find? p (.unres procName) = some proc) →
           proc.header.outputs.length = lhs.length
   lhsDisj : (Program.Procedure.find? p (.unres procName) = some proc) →
-          lhs.Disjoint (proc.spec.modifies ++ ListMap.keys proc.header.inputs ++ ListMap.keys proc.header.outputs)
+          lhs.Disjoint' (proc.spec.modifies ++ ListMap.keys proc.header.inputs ++ ListMap.keys proc.header.outputs)
   lhsWF : lhs.Nodup ∧ Forall (BoogieIdent.isLocl ·) lhs
   wfargs : Forall (WFargProp p) args
 
@@ -136,7 +136,7 @@ structure WFAxiomDeclarationProp (p : Program) (f : Axiom) : Prop where
 structure WFProcedureProp (p : Program) (d : Procedure) : Prop where
   wfstmts : WFStatementsProp p d.body
   wfloclnd : (HasVarsImp.definedVars (P:=Expression) d.body).Nodup
-  ioDisjoint : (ListMap.keys d.header.inputs).Disjoint (ListMap.keys d.header.outputs)
+  ioDisjoint : (ListMap.keys d.header.inputs).Disjoint' (ListMap.keys d.header.outputs)
   inputsNodup : (ListMap.keys d.header.inputs).Nodup
   outputsNodup : (ListMap.keys d.header.outputs).Nodup
   modNodup : d.spec.modifies.Nodup

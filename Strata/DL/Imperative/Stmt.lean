@@ -75,6 +75,19 @@ instance (P : PureExpr) : SizeOf (Imperative.Stmt P C) where
 instance (P : PureExpr) : SizeOf (Imperative.Stmts P C) where
   sizeOf := Stmts.sizeOf
 
+@[simp]
+def Stmts.sizeOf_lt_of_mem {s : Imperative.Stmt P C} {ss : Imperative.Stmts P C}
+    (h : s ∈ ss) : SizeOf.sizeOf s < SizeOf.sizeOf ss := by
+  induction ss with
+  | nil => contradiction
+  | cons s' ss ih =>
+    simp only [SizeOf.sizeOf, Stmts.sizeOf] at *
+    cases h
+    case head => omega
+    case tail h =>
+      specialize ih h
+      omega
+
 ---------------------------------------------------------------------
 
 /--

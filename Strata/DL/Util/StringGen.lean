@@ -17,7 +17,7 @@ import Strata.DL.Util.Counter
 /-- `s.IsSuffix t` checks if the string `s` is a suffix of the string `t`.
 from mathlib https://github.com/leanprover-community/mathlib4/blob/f3c56c29d5c787d62f66c207e097a159ff66318a/Mathlib/Data/String/Defs.lean#L37-L39
 -/
-def String.IsSuffix : String → String → Prop
+private def String.IsSuffix : String → String → Prop
   | ⟨d1⟩, ⟨d2⟩ => List.IsSuffix d1 d2
 
 /-- Wrapper around CounterState to allow a prefix -/
@@ -75,7 +75,7 @@ theorem String.append_eq_prefix (as as' bs : String):
   simp [String.data_append] at *
   contradiction
 
-theorem List.reverse_injective :
+private theorem List.reverse_injective :
   List.reverse l₁ = List.reverse l₂ → l₁ = l₂ := List.reverse_inj.mp
 
 theorem String.data_wrap : pf = { data:= pf : String}.data := rfl
