@@ -122,6 +122,8 @@ def translateSort (ty : TermType) : TranslateM Expr := do
     return (mkBitVec w)
   | .prim .string =>
     return mkString
+  | .prim .trigger =>
+    throw m!"Error: triggers are not supported"
   | .option ty => do
     let ty ← translateSort ty
     return .app (.const ``Option [0]) ty
