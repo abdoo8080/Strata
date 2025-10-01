@@ -84,8 +84,8 @@ structure UFWF (ufs : List UF) (Γ : UFEnv) where
   ha : ∀ i, (hi : i < ufs.length) → ufs[i].args = Γ[i].args ∧ ufs[i].out = Γ[i].out
 
 structure Context where
-  ufs : List UF := {}
   vs : List TermVar := {}
+  ufs : List UF := {}
 
 structure DenoteEnv (ctx : Context) where
   vΓ : List TermVarDenote
@@ -136,6 +136,7 @@ theorem checkArgsTy_true_args (h : checkArgsTy as vs) :
   case neg =>
     rewrite [dif_neg hl] at h; contradiction
 
+@[simp]
 def applyUF (Γ : DenoteEnv ctx) (uf : (denoteTermTypes args out).get h) (as : List (DenoteResult ctx))
     (hl : args.length = as.length) (has : ∀ i, (hi : i < as.length) → as[i].ty = (args[i]'(hl ▸ hi)).ty) :
     (denoteTermType out).get (denoteTypeOut_isSome_of_denoteTypes_isSome h) :=
@@ -147,6 +148,7 @@ def applyUF (Γ : DenoteEnv ctx) (uf : (denoteTermTypes args out).get h) (as : L
     let uf := uf (Option.get_congr ha ▸ a.res Γ)
     applyUF Γ uf as (Nat.succ.inj hl) (fun i hi => (has (i + 1) (Nat.succ_lt_succ hi)))
 
+@[simp]
 def denoteApplyUF (uf : UF) (as : List (DenoteResult ctx)) : Option (DenoteResult ctx) := do
   if hTys : (denoteTermTypes uf.args uf.out).isSome then
     match h : ctx.ufs.findIdx? (· == uf) with
@@ -389,7 +391,8 @@ def example1 (x : Int) : Prop := Id.run do
 #check TermVarDenote
 #check TermVar
 
-noncomputable def bindQuant {n} {ty} (ctx : Context) (ft' :
+@[simp]
+noncomputable def bindFV {n} {ty} (ctx : Context) (ft' :
     letI v' := { isBound := false, id := n, ty := ty }
     letI vs' := v' :: ctx.vs
     letI ctx' := { ufs := ctx.ufs, vs := vs' }
@@ -401,8 +404,8 @@ noncomputable def bindQuant {n} {ty} (ctx : Context) (ft' :
     letI ctx' := { ufs := ctx.ufs, vs := vs' }
     letI ft (Γ : DenoteEnv ctx) :=
       ∀ x : (denoteTermType ty).get hTy,
-        letI var' := { id := n, ty := ty, h := hTy, var := x }
-        letI vΓ' := var' :: Γ.vΓ
+        letI v' := { id := n, ty := ty, h := hTy, var := x }
+        letI vΓ' := v' :: Γ.vΓ
         haveI hv' : VarWF vs' vΓ' :=
           have h' := show _ + _ = _ + _ from Γ.hv.h ▸ rfl
           have ha' := fun i hivs => match i with
@@ -418,44 +421,30 @@ noncomputable def bindQuant {n} {ty} (ctx : Context) (ft' :
   else
     none
 
--- @[simp]
--- noncomputable def denoteBoolTermFromContext (ctx : Boogie.SMT.Context) (t : Term) : Option Prop := do
---   let t := (ctx.axms.foldr (.app .implies [·, ·] (.prim .bool)) t)
---   let ⟨.prim .bool, _, ft⟩ ← denoteTerm { ufs := [], vs := ctx.fvs.toList } t | none
---   go [] [] { h := rfl, ha := fun _ hi => nomatch hi } ctx.fvs.toList ft
--- where
---   go ufs ufΓ huf vs (ft' : DenoteEnv { ufs, vs } → Prop)  : Option Prop := do match vs with
---     | [] =>
---       ft' ⟨[], { h := rfl, ha := fun _ hi => nomatch hi }, ufΓ, huf⟩
---     | { isBound := false, id := id, ty := ty } :: vs =>
---       let ft ← bindQuant { ufs, vs := vs } ft'
---       go ufs ufΓ huf vs ft
---     | _ => none
-
-
 noncomputable def denoteFuncType (args : List TermVar) (out : TermType) : Option Type := do
   let argTys ← args.mapM (fun v => denoteTermType v.ty)
   let retTy ← denoteTermType out
   return argTys.foldr (· → ·) retTy
 
-noncomputable def bindUninterpFunc {n} {args out} (ctx : Context) (ft' :
+@[simp]
+noncomputable def bindUF {n} {args out} (ctx : Context) (ft' :
     letI uf' := { id := n, args := args, out := out }
     letI ufs' := uf' :: ctx.ufs
     letI ctx' := { ufs := ufs', vs := ctx.vs }
     DenoteEnv ctx' → Prop) :
   Option (DenoteEnv ctx → Prop) := do
-  if hFuncTy : (denoteFuncType args out).isSome then
+  if hTys : (denoteTermTypes args out).isSome then
     letI uf' := { id := n, args := args, out := out }
     letI ufs' := uf' :: ctx.ufs
     letI ctx' := { ufs := ufs', vs := ctx.vs }
     letI ft (Γ : DenoteEnv ctx) :=
-      ∀ f : (denoteFuncType args out).get hFuncTy,
-        letI func' := { uf := uf', id := n, args := args, out := out, h := hFuncTy, func := f }
-        letI ufΓ' := func' :: Γ.ufΓ
-        haveI huf' : UninterpFuncWF ufs' ufΓ' :=
+      ∀ f : (denoteTermTypes args out).get hTys,
+        letI uf' := { id := n, args := args, out := out, h := hTys, uf := f }
+        letI ufΓ' := uf' :: Γ.ufΓ
+        haveI huf' : UFWF ufs' ufΓ' :=
           have h' := show _ + _ = _ + _ from Γ.huf.h ▸ rfl
           have ha' := fun i hiufs => match i with
-            | 0 => rfl
+            | 0 => ⟨rfl, rfl⟩
             | i + 1 =>
               have hiufs' := Nat.lt_of_succ_lt_succ hiufs
               have hiufΓ := Nat.succ_lt_succ (Γ.huf.h ▸ hiufs')
@@ -470,22 +459,26 @@ noncomputable def bindUninterpFunc {n} {args out} (ctx : Context) (ft' :
 @[simp]
 noncomputable def denoteBoolTermFromContext (ctx : Boogie.SMT.Context) (t : Term) : Option Prop := do
   let t := (ctx.axms.foldr (.app .implies [·, ·] (.prim .bool)) t)
-  let ⟨.prim .bool, _, ft⟩ ← denoteTerm { ufs := ctx.ufs.toList, vs := ctx.fvs.toList } t | none
-  go [] [] { h := rfl, ha := fun _ hi => nomatch hi } { h := rfl, ha := fun _ hi => nomatch hi } ctx.ufs.toList ctx.fvs.toList ft
+  let vs := ctx.fvs.toList.reverse
+  let ufs := ctx.ufs.toList.reverse
+  let ⟨.prim .bool, _, ft⟩ ← denoteTerm { vs, ufs } t | none
+  let ft ← bindUFs vs ufs ft
+  let ft ← bindFVs vs [] ft
+  ft ⟨[], { h := rfl, ha := nofun }, [], { h := rfl, ha := nofun }⟩
 where
-  go ufs ufΓ huf vs vΓ hvs (ft' : DenoteEnv { ufs, vs } → Prop) : Option Prop := do
-    match ufs with
-    | [] =>
-      match vs with
-      | [] => ft' ⟨ufΓ, huf, vΓ, hvs⟩
-      | { isBound := false, id := id, ty := ty } :: vs =>
-        let ft ← bindQuant { ufs := [], vs := vs } ft'
-        go [] ufΓ huf vs vΓ hvs ft
-      | _ => none
-    | { id := id, args := args, out := out } :: ufs =>
-      let ft ← bindUninterpFunc { ufs := ufs, vs } ft'
-      go ufs ufΓ huf vs vΓ hvs ft
-
+  bindFVs vs ufs (ft' : DenoteEnv { vs, ufs } → Prop) : Option (DenoteEnv { vs := [], ufs } → Prop) :=
+    do match vs with
+    | [] => return ft'
+    | { isBound := false, id := _, ty := _ } :: vs =>
+      let ft ← bindFV { vs, ufs } ft'
+      bindFVs vs ufs ft
+    | _ => none
+  bindUFs vs ufs (ft' : DenoteEnv { vs, ufs } → Prop) : Option (DenoteEnv { vs, ufs := [] } → Prop) :=
+    do match ufs with
+    | [] => return ft'
+    | _ :: ufs =>
+      let ft ← bindUF { vs, ufs } ft'
+      bindUFs vs ufs ft
 
 @[simp]
 noncomputable def denoteQuery (ctx : Boogie.SMT.Context) (assums : Array Term) (conc : Term) : Option Prop :=
@@ -510,4 +503,24 @@ example : (denoteQuery {fvs := #[{ isBound := false, id := "a", ty := .prim .int
   --   TermVar.mk.injEq, Bool.false_eq_true, and_self, and_true, ↓dreduceIte, gt_iff_lt,
   --   Option.bind_eq_bind, Option.bind_none, Option.bind_some]
   show some (∀ (x : Int), x < 42) = some _
+  rfl
+
+
+example : (denoteQuery {ufs := #[{ id := "a", args := [], out := .prim .int }]} #[] (.app .gt [(.prim (.int 42)), .app (.uf { id := "a", args := [], out := .prim .int }) [] (.prim .int)] (.prim .int))) = .some (∀ (x : Int), 42 > x) := by
+  -- simp only [denoteQuery, denoteBoolTermFromContext, List.size_toArray, List.length_nil,
+  --   List.foldr_toArray', List.foldr_nil, denoteTerm, Option.pure_def, Option.isSome_some,
+  --   Option.get_some, denoteTermType, ↓reduceDIte, List.findIdx?, List.findIdx?.go, beq_iff_eq,
+  --   TermVar.mk.injEq, Bool.false_eq_true, and_self, and_true, ↓dreduceIte, gt_iff_lt,
+  --   Option.bind_eq_bind, Option.bind_none, Option.bind_some]
+  show some (∀ (x : Int), x < 42) = some _
+  rfl
+
+
+example : (denoteQuery {ufs := #[{ id := "f", args := [{ isBound := true, id := "a", ty := .prim .int }], out := .prim .int }]} #[] (.app .gt [(.prim (.int 42)), .app (.uf { id := "f", args := [{ isBound := true, id := "a", ty := .prim .int }], out := .prim .int }) [.prim (.int 3)] (.prim .int)] (.prim .int))) = .some (∀ (f : Int → Int), f 3 < 42) := by
+  -- simp only [denoteQuery, denoteBoolTermFromContext, List.size_toArray, List.length_nil,
+  --   List.foldr_toArray', List.foldr_nil, denoteTerm, Option.pure_def, Option.isSome_some,
+  --   Option.get_some, denoteTermType, ↓reduceDIte, List.findIdx?, List.findIdx?.go, beq_iff_eq,
+  --   TermVar.mk.injEq, Bool.false_eq_true, and_self, and_true, ↓dreduceIte, gt_iff_lt,
+  --   Option.bind_eq_bind, Option.bind_none, Option.bind_some]
+  show some (∀ (f : Int → Int), f 3 < 42) = some _
   rfl
