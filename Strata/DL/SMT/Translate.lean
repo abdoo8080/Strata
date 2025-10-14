@@ -352,19 +352,6 @@ end Translate
 def translateQuery (ctx : Boogie.SMT.Context) (assums : Array SMT.Term) (conc : SMT.Term) : Except MessageData Expr :=
   (Translate.translateQuery ctx assums conc).run' {}
 
-def createGoal (ctx : Boogie.SMT.Context) (terms : List SMT.Term) (name : String) : MetaM MVarId := do
-  let t :: ts := terms | throwError "No terms to discharge"
-  let (ts, t) := ((t :: ts).dropLast, (t :: ts).getLast?.get rfl)
-  let t := Factory.not t
-  match translateQuery ctx ts.toArray t with
-  | .error e =>
-    throwError e
-  | .ok e =>
-    trace[strata.verify] "{e}"
-    Meta.check e
-    let .mvar mv ← Meta.mkFreshExprMVar e (userName := Translate.symbolToName name) | throwError "Failed to create goal"
-    return mv
-
 def translateQueryMeta (ctx : Boogie.SMT.Context) (assums : Array SMT.Term) (conc : SMT.Term) : MetaM Expr := do
   Lean.ofExcept (translateQuery ctx assums conc)
 

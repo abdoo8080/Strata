@@ -10,9 +10,50 @@ import Strata.Languages.Boogie.Verifier
 import Strata.Languages.C_Simp.Verify
 import Strata.DL.Imperative.SMTUtils
 import Strata.DL.SMT.CexParser
+import Strata.DL.SMT.Denote
 import Strata.DL.SMT.Translate
 
 open Lean hiding Options
+
+namespace Strata.SMT
+
+instance {α : Type u} {β : Type v} [hu : ToLevel.{u}] [hv : ToLevel.{v}] [ToExpr α] [ToExpr β] : ToExpr (Map α β) where
+  toExpr m   := mkApp3 (.const ``Map.ofList [toLevel.{u}, toLevel.{v}]) (toTypeExpr α) (toTypeExpr β)
+                       (@toExpr _ (@instToExprListOfToLevel _ ToLevel.max.{u, v} _) m.toList)
+  toTypeExpr := mkApp2 (.const ``Map [toLevel.{u}, toLevel.{v}]) (toTypeExpr α) (toTypeExpr β)
+
+deriving instance ToExpr for TermPrimType
+deriving instance ToExpr for TermType
+deriving instance ToExpr for TermVar
+deriving instance ToExpr for UF
+deriving instance ToExpr for TermPrim
+deriving instance ToExpr for Op
+deriving instance ToExpr for QuantifierKind
+deriving instance ToExpr for SMT.Term
+deriving instance ToExpr for Boogie.SMT.Sort
+deriving instance ToExpr for Boogie.SMT.IF
+deriving instance ToExpr for Boogie.SMT.Context
+
+def createGoal (ctx : Boogie.SMT.Context) (terms : List SMT.Term) (name : String) : MetaM MVarId := do
+  let t :: ts := terms | throwError "No terms to discharge"
+  let (ts, t) := ((t :: ts).dropLast, (t :: ts).getLast?.get rfl)
+  let t := Factory.not t
+  match translateQuery ctx ts.toArray t with
+  | .error e =>
+    throwError e
+  | .ok e =>
+    trace[strata.verify] "e := {e}"
+    let denotation := mkApp3 (.const ``denoteQuery []) (toExpr ctx) (toExpr ts) (toExpr t)
+    trace[strata.verify] "denotation := {denotation}"
+    Meta.check e
+    Meta.check denotation
+    let oe := mkApp2 (.const ``Option.some [0]) (.sort 0) e
+    if !(← Meta.approxDefEq <| Meta.isDefEqGuarded denotation oe) then
+      trace[strata.verify] "Warning: denotation does not match generated expression"
+    let .mvar mv ← Meta.mkFreshExprMVar e (userName := Translate.symbolToName name) | throwError "Failed to create goal"
+    return mv
+
+end Strata.SMT
 
 namespace Boogie
 
