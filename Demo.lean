@@ -28,7 +28,10 @@ spec {
 };
 #end
 
-#prove_vcs loopSimple by
+open Strata.SMT
+
+theorem loopSimple_smtVCsCorrect : smtVCsCorrect loopSimple := by
+  gen_smt_vcs
   all_goals (try grind)
   case sum_assert =>
     intro n i sum i' sum'
@@ -37,3 +40,9 @@ spec {
     · grind
     · have : n = 0 := by omega
       simp_all
+
+#print axioms loopSimple_smtVCsCorrect
+
+theorem loopSimple_boogieVCsCorrect : boogieVCsCorrect loopSimple := by
+  apply boogieVCsCorrect_of_smtVCsCorrect
+  exact loopSimple_smtVCsCorrect
