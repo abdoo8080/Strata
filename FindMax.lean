@@ -77,9 +77,6 @@ spec {
 
 theorem findMax_smtVCsCorrect : smtVCsCorrect findMax := by
   gen_smt_vcs
-  skip
-  all_goals (try grind)
-  skip
   case arbitrary_iter_maintain_invariant_0 =>
     intro Map _ n i max nums get h0 hin ⟨⟨⟨hi1, hi2⟩, (hi3 : ∀ k, _)⟩, ⟨j, hi4⟩⟩
     intros
@@ -93,3 +90,4 @@ theorem findMax_smtVCsCorrect : smtVCsCorrect findMax := by
   case findMax_ensures_1 =>
     simp only [and_imp]
     grind
+  all_goals (try grind)
