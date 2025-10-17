@@ -11,7 +11,10 @@ structure Translate.State where
       level (not index). So, the variables are indexed from the bottom of the
       stack rather than from the top (i.e., the order in which the symbols are
       introduced in the SMT-LIB file). To compute the de Bruijn index, we
-      subtract the variable's level from the current level. -/
+      subtract the variable's level from the current level. Note that the type
+      is stored using de Bruijn indices computed at the variable's level `vl`.
+      To convert the type to use de Bruijn indices at the current level, we need
+      to "sanitize" it by calling `sanitizeExpr` with the current level. -/
   bvars : Std.HashMap Name (Expr × Nat) := {}
 deriving Repr
 
@@ -19,10 +22,43 @@ abbrev TranslateM := StateT Translate.State (Except MessageData)
 
 namespace Translate
 
+def sanitizeExpr (e : Expr) (offset : Nat) : Expr :=
+  go e offset 0
+where
+  go (e : Expr) (offset currDepth : Nat) : Expr :=
+    match e with
+    | .bvar i =>
+      .bvar (if i < currDepth then i else i + offset)
+    | .forallE _ ty b _ =>
+      let ty := go ty offset currDepth
+      let b := go b offset (currDepth + 1)
+      e.updateForallE! ty b
+    | .lam _ ty b _ =>
+      let ty := go ty offset currDepth
+      let b := go b offset (currDepth + 1)
+      e.updateLambdaE! ty b
+    | .mdata _ b =>
+      let b := go b offset currDepth
+      e.updateMData! b
+    | .letE _ t v b _ =>
+      let t := go t offset currDepth
+      let v := go v offset currDepth
+      let b := go b offset (currDepth + 1)
+      e.updateLetE! t v b
+    | .app f a =>
+      let f := go f offset currDepth
+      let a := go a offset currDepth
+      e.updateApp! f a
+    | .proj _ _ b =>
+      let b := go b offset currDepth
+      e.updateProj! b
+    | e => e
+
 def findName (n : Name) : TranslateM (Expr × Expr) := do
   let state ← get
   match state.bvars[n]? with
-  | some (t, i) => return (t, .bvar (state.level - i - 1))
+  | some (t, i) =>
+    return (sanitizeExpr t (state.level - i), .bvar (state.level - i - 1))
   | none => throw m!"Error: variable '{n}' not found in context"
 
 private def mkArrow (α β : Expr) : Expr :=
@@ -144,9 +180,9 @@ def translateTerm (t : SMT.Term) : TranslateM (Expr × Expr) := do
     let state ← get
     let translateBinder := fun (n, ty) => do
       let n := symbolToName n
-      let ty ← translateSort ty
-      modify fun s => { level := s.level + 1, bvars := s.bvars.insert n (ty, s.level) }
-      return (n, ty)
+      let t ← translateSort ty
+      modify fun s => { level := s.level + 1, bvars := s.bvars.insert n (t, s.level) }
+      return (n, t)
     let ns ← ns.mapM translateBinder
     let (_, b) ← translateTerm b
     set state
@@ -224,17 +260,6 @@ where
     let as ← as.mapM (translateTerm · >>= pure ∘ Prod.snd)
     return (α, as.foldl (mkApp2 op) a)
 
-def mkTypeArrowN (as : Array SMT.TermType) (a : SMT.TermType) : TranslateM Expr := do
-  let level := (← get).level
-  let f as a := do
-    let a ← translateSort a
-    modify fun s => { s with level := s.level + 1 }
-    return (as.push a)
-  let as ← as.foldlM f #[]
-  let a ← translateSort a
-  modify fun s => { s with level := level + 1 }
-  return as.foldr mkArrow a
-
 def mkPropArrowN (as : Array SMT.Term) (a : SMT.Term) : TranslateM Expr := do
   let level := (← get).level
   let f as a := do
@@ -249,14 +274,20 @@ def mkPropArrowN (as : Array SMT.Term) (a : SMT.Term) : TranslateM Expr := do
 def withTypeDecls (uss : Array Boogie.SMT.Sort) (k : TranslateM Expr) : TranslateM Expr := do
   let state ← get
   let mut decls ← uss.mapM translateTypeDecl
-  let (level, bvars) := decls.foldl (fun (lvl, bvs) (n, t) => (lvl + 1, bvs.insert n (t, lvl))) (state.level, state.bvars)
-  set { bvars, level : Translate.State }
   let b ← k
   set state
-  return decls.foldr (fun (n, t) b => .forallE n t b .default) b
+  return decls.flatten.foldr (fun (n, t, bi) b => .forallE n t b bi) b
 where
-  translateTypeDecl (us : Boogie.SMT.Sort) : TranslateM (Name × Expr) := do
-    return (symbolToName us.name, us.arity.repeatTR (.forallE .anonymous (.sort 1) · .default) (.sort 1))
+  translateTypeDecl (us : Boogie.SMT.Sort) : TranslateM (Array (Name × Expr × BinderInfo)) := do
+    let n := symbolToName us.name
+    let t := us.arity.repeatTR (.forallE .anonymous (.sort 1) · .default) (.sort 1)
+    modify fun s => { level := s.level + 1, bvars := s.bvars.insert n (t, s.level) }
+    let hn := `inst
+    let xs := (Array.range us.arity).map Expr.bvar
+    let nonempty := .app (.const ``Nonempty [1]) (mkAppN (.bvar us.arity) xs.reverse)
+    let ht := us.arity.repeatTR (.forallE `α (.sort 1) · .default) nonempty
+    modify fun s => { level := s.level + 1, bvars := s.bvars.insert hn (ht, s.level) }
+    return #[(n, t, .default), (hn, ht, .instImplicit)]
 
 def withTypeDefs (iss : Map String TermType) (k : TranslateM Expr) : TranslateM Expr := do
   let state ← get
@@ -269,39 +300,45 @@ def withTypeDefs (iss : Map String TermType) (k : TranslateM Expr) : TranslateM 
   return defs.foldr (fun (n, t, v) b => .letE n t v b false) b
 where
   translateTypeDef (is : String × TermType) : TranslateM (Name × Expr × Expr) := do
-    let state ← get
     let n := symbolToName is.fst
     let t := .sort 1
     let v ← translateSort is.snd
-    let bvars := state.bvars.insert n (t, state.level)
-    let level := state.level + 1
-    set { bvars, level : Translate.State }
+    modify fun s => { level := s.level + 1, bvars := s.bvars.insert n (t, s.level) }
     return (n, t, v)
 
 def withFVDecls (fvs : Array TermVar) (k : TranslateM Expr) : TranslateM Expr := do
   let state ← get
   let mut decls ← fvs.mapM translateFVDecl
-  let (level, bvars) := decls.foldl (fun (lvl, bvs) (n, t) => (lvl + 1, bvs.insert n (t, lvl))) (state.level, state.bvars)
-  set { bvars, level : Translate.State }
   let b ← k
   set state
   return decls.foldr (fun (n, t) b => .forallE n t b .default) b
 where
   translateFVDecl (fv : TermVar) : TranslateM (Name × Expr) := do
-    return (symbolToName fv.id, ← translateSort fv.ty)
+    let n := symbolToName fv.id
+    let t ← translateSort fv.ty
+    modify fun s => { level := s.level + 1, bvars := s.bvars.insert n (t, s.level) }
+    return (n, t)
 
 def withFunDecls (ufs : Array UF) (k : TranslateM Expr) : TranslateM Expr := do
   let state ← get
   let mut decls ← ufs.mapM translateFunDecl
-  let (level, bvars) := decls.foldl (fun (lvl, bvs) (n, t) => (lvl + 1, bvs.insert n (t, lvl))) (state.level, state.bvars)
-  set { bvars, level : Translate.State }
   let b ← k
   set state
   return decls.foldr (fun (n, t) b => .forallE n t b .default) b
 where
   translateFunDecl (uf : UF) : TranslateM (Name × Expr) := do
-    let ss := uf.args.map TermVar.ty
-    return (symbolToName uf.id, ← mkTypeArrowN ss.toArray uf.out)
+    let state ← get
+    let n := symbolToName uf.id
+    let ps ← uf.args.mapM translateParam
+    let s ← translateSort uf.out
+    let t := ps.foldr (fun (n, t) b => .forallE n t b .default) s
+    set { level := state.level + 1, bvars := state.bvars.insert n (t, state.level) : Translate.State }
+    return (n, t)
+  translateParam (v : TermVar) : TranslateM (Name × Expr) := do
+    let n := symbolToName v.id
+    let t ← translateSort v.ty
+    modify fun s => { level := s.level + 1, bvars := s.bvars.insert n (t, s.level) }
+    return (n, t)
 
 def withFunDefs (ifs : Array Boogie.SMT.IF) (k : TranslateM Expr) : TranslateM Expr := do
   let state ← get
@@ -316,19 +353,18 @@ where
   translateFunDef (f : Boogie.SMT.IF) : TranslateM (Name × Expr × Expr) := do
     let state ← get
     let ps ← f.uf.args.mapM translateParam
-    let (level, bvars) := ps.foldl (fun (lvl, bvs) (n, t) => (lvl + 1, bvs.insert n (t, lvl))) (state.level, state.bvars)
-    set { bvars, level : Translate.State }
     let s ← translateSort f.uf.out
     let (_, b) ← translateTerm f.body
-    let nn := symbolToName f.uf.id
+    let n := symbolToName f.uf.id
     let t := ps.foldr (fun (n, t) b => .forallE n t b .default) s
     let v := ps.foldr (fun (n, t) b => .lam n t b .default) b
-    let bvars := state.bvars.insert nn (t, state.level)
-    let level := state.level + 1
-    set { bvars, level : Translate.State }
-    return (nn, t, v)
+    set { level := state.level + 1, bvars := state.bvars.insert n (t, state.level) : Translate.State }
+    return (n, t, v)
   translateParam (v : TermVar) : TranslateM (Name × Expr) := do
-    return (symbolToName v.id, ← translateSort v.ty)
+    let n := symbolToName v.id
+    let t ← translateSort v.ty
+    modify fun s => { level := s.level + 1, bvars := s.bvars.insert n (t, s.level) }
+    return (n, t)
 
 def withCtx (ctx : Boogie.SMT.Context) (k : TranslateM Expr) : TranslateM Expr := do
   let state ← get
@@ -349,14 +385,14 @@ def translateQuery (ctx : Boogie.SMT.Context) (assums : Array SMT.Term) (conc : 
 
 end Translate
 
-def translateQuery (ctx : Boogie.SMT.Context) (assums : Array SMT.Term) (conc : SMT.Term) : Except MessageData Expr :=
-  (Translate.translateQuery ctx assums conc).run' {}
+def translateQuery (ctx : Boogie.SMT.Context) (assums : List SMT.Term) (conc : SMT.Term) : Except MessageData Expr :=
+  (Translate.translateQuery ctx assums.toArray conc).run' {}
 
-def translateQueryMeta (ctx : Boogie.SMT.Context) (assums : Array SMT.Term) (conc : SMT.Term) : MetaM Expr := do
+def translateQueryMeta (ctx : Boogie.SMT.Context) (assums : List SMT.Term) (conc : SMT.Term) : MetaM Expr := do
   Lean.ofExcept (translateQuery ctx assums conc)
 
 open Elab Command in
-def elabQuery (ctx : Boogie.SMT.Context) (assums : Array SMT.Term) (conc : SMT.Term) : CommandElabM Unit := do
+def elabQuery (ctx : Boogie.SMT.Context) (assums : List SMT.Term) (conc : SMT.Term) : CommandElabM Unit := do
   runTermElabM fun _ => do
   let e ← translateQueryMeta ctx assums conc
   logInfo e
@@ -365,4 +401,19 @@ set_option trace.debug true
 
 /-- info: ∀ (a : Int), 42 > a -/
 #guard_msgs in
-#eval elabQuery {} #[] (.quant .all [("a", .prim .int)] (.var { isBound := true, id := "a", ty := .prim .int }) (.app .gt [(.prim (.int 42)), .var { isBound := true, id := "a", ty := .prim .int }] (.prim .int)))
+#eval elabQuery {} [] (.quant .all [("a", .prim .int)] (.var { isBound := true, id := "a", ty := .prim .int }) (.app .gt [(.prim (.int 42)), .var { isBound := true, id := "a", ty := .prim .int }] (.prim .int)))
+
+/--
+info: ∀ (α : Type → Type → Type) [inst : ∀ (α_1 α_2 : Type), Nonempty (α α_1 α_2)] (β : Type) [inst : Nonempty β]
+  (γ : Type → Type) [inst : ∀ (α : Type), Nonempty (γ α)] (a : α β Prop) (b : γ (α β Prop)) (f : α β Prop → β),
+  a = a ∧ b = b
+-/
+#guard_msgs in
+#eval
+  let α := { name := "α", arity := 2 }
+  let β := { name := "β", arity := 0 }
+  let γ := { name := "γ", arity := 1 }
+  let f := { id := "f", args := [{ isBound := false, id := "x", ty := .constr α.name [.constr β.name [], .prim .bool] }], out := .constr β.name [] }
+  let a := { isBound := false, id := "a", ty := .constr α.name [.constr β.name [], .prim .bool] }
+  let b := { isBound := false, id := "b", ty := .constr γ.name [.constr α.name [.constr β.name [], .prim .bool]] }
+  elabQuery { sorts := #[α, β, γ], fvs := #[a, b], ufs := #[f] } [] (.app .and [(.app .eq [a, a] (.prim .bool)), (.app .eq [b, b] (.prim .bool))] (.prim .bool))

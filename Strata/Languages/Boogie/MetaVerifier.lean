@@ -17,41 +17,8 @@ open Lean hiding Options
 
 namespace Strata.SMT
 
-instance {α : Type u} {β : Type v} [hu : ToLevel.{u}] [hv : ToLevel.{v}] [ToExpr α] [ToExpr β] : ToExpr (Map α β) where
-  toExpr m   := mkApp3 (.const ``Map.ofList [toLevel.{u}, toLevel.{v}]) (toTypeExpr α) (toTypeExpr β)
-                       (@toExpr _ (@instToExprListOfToLevel _ ToLevel.max.{u, v} _) m.toList)
-  toTypeExpr := mkApp2 (.const ``Map [toLevel.{u}, toLevel.{v}]) (toTypeExpr α) (toTypeExpr β)
-
-deriving instance ToExpr for TermPrimType
-deriving instance ToExpr for TermType
-deriving instance ToExpr for TermVar
-deriving instance ToExpr for UF
-deriving instance ToExpr for TermPrim
-deriving instance ToExpr for Op
-deriving instance ToExpr for QuantifierKind
-deriving instance ToExpr for SMT.Term
-deriving instance ToExpr for Boogie.SMT.Sort
-deriving instance ToExpr for Boogie.SMT.IF
-deriving instance ToExpr for Boogie.SMT.Context
-
 abbrev SMTVC := String × Boogie.SMT.Context × List Term × Term
 abbrev SMTVCs := List SMTVC
-
-def createGoal : SMTVC → MetaM MVarId := fun (label, ctx, ts, t) => do
-  match translateQuery ctx ts.toArray t with
-  | .error e =>
-    throwError e
-  | .ok e =>
-    trace[strata.verify] "e := {e}"
-    let denotation := mkApp3 (.const ``denoteQuery []) (toExpr ctx) (toExpr ts) (toExpr t)
-    trace[strata.verify] "denotation := {denotation}"
-    Meta.check e
-    Meta.check denotation
-    let oe := mkApp2 (.const ``Option.some [0]) (.sort 0) e
-    if !(← Meta.approxDefEq <| Meta.isDefEqGuarded denotation oe) then
-      trace[strata.verify] "Warning: denotation does not match generated expression"
-    let .mvar mv ← Meta.mkFreshExprMVar e (userName := Translate.symbolToName label) | throwError "Failed to create goal"
-    return mv
 
 end Strata.SMT
 
@@ -76,8 +43,6 @@ def genVCs (program : Program) (options : Options := Options.default) : Option B
 end Boogie
 
 namespace C_Simp
-
-open C_Simp
 
 def genVCs (program : Strata.C_Simp.Program) (options : Options := Options.default) : Option Boogie.BoogieVCs := do
   let program := Strata.to_boogie program
@@ -288,6 +253,39 @@ theorem boogieVCsCorrect_of_smtVCsCorrect (program : Program) :
           simp only [hP, Option.getD_some]
           exact DPOs_of_DQs hs hP hQ
 
+namespace SMT
+
+instance {α : Type u} {β : Type v} [hu : ToLevel.{u}] [hv : ToLevel.{v}] [ToExpr α] [ToExpr β] : ToExpr (Map α β) where
+  toExpr m   := mkApp3 (.const ``Map.ofList [toLevel.{u}, toLevel.{v}]) (toTypeExpr α) (toTypeExpr β)
+                       (@toExpr _ (@instToExprListOfToLevel _ ToLevel.max.{u, v} _) m.toList)
+  toTypeExpr := mkApp2 (.const ``Map [toLevel.{u}, toLevel.{v}]) (toTypeExpr α) (toTypeExpr β)
+
+deriving instance ToExpr for TermPrimType
+deriving instance ToExpr for TermType
+deriving instance ToExpr for TermVar
+deriving instance ToExpr for UF
+deriving instance ToExpr for TermPrim
+deriving instance ToExpr for Op
+deriving instance ToExpr for QuantifierKind
+deriving instance ToExpr for SMT.Term
+deriving instance ToExpr for Boogie.SMT.Sort
+deriving instance ToExpr for Boogie.SMT.IF
+deriving instance ToExpr for Boogie.SMT.Context
+
+def createGoal : SMTVC → MetaM MVarId := fun (label, ctx, ts, t) => do
+  match translateQuery ctx ts t with
+  | .error e =>
+    logInfo m!"Error translating query"
+    throwError e
+  | .ok e =>
+    trace[debug] "e := {e}"
+    Meta.check e
+    let .mvar mv ← Meta.mkFreshExprMVar e (userName := Translate.symbolToName label)
+      | throwError "Failed to create goal"
+    return mv
+
+end SMT
+
 namespace Meta
 
 def andN (ps : List Lean.Expr) : Lean.Expr :=
@@ -331,19 +329,20 @@ where
 unsafe def genSMTVCs (mv : MVarId) : MetaM (List MVarId) := do
   let type ← mv.getType
   let some program := type.app1? ``Strata.smtVCsCorrect | throwError "Expected a Strata.smtVCsCorrect goal"
-  logInfo m!"Generating SMT VCs for {program}"
+  trace[debug] m!"Generating SMT VCs for {program}"
   let mv ← Meta.unfoldTarget mv ``Strata.smtVCsCorrect
   let ovcs := .app (.const ``Strata.genSMTVCs []) program
   let ovcsType := .app (.const ``Option [0]) (.const ``Strata.SMT.SMTVCs [])
   let some evcs ← Meta.evalExpr (Option Strata.SMT.SMTVCs) ovcsType ovcs
     | throwError "Failed to generate VCs"
-  logInfo m!"Generated {repr evcs}"
+  trace[debug] m!"Generated {repr evcs}"
   let eqVCs := mkApp3 (.const ``Eq [1]) ovcsType ovcs (toExpr (some evcs))
   -- let hEQVCs := mkApp2 (.const ``Eq.refl [1]) ovcsType (toExpr (some evcs))
   let hEQVCs ← nativeDecide eqVCs
   let r ← mv.rewrite (← mv.getType) hEQVCs
   let mv ← mv.replaceTargetEq r.eNew r.eqProof
   let mvs ← evcs.mapM SMT.createGoal
+  trace[debug] m!"Created {mvs.length} SMT VC goals: {mvs}"
   let ps ← mvs.mapM MVarId.getType
   let hP := andNIntro (List.zip ps (mvs.map Expr.mvar))
   mv.assign hP
@@ -397,6 +396,3 @@ open Lean Elab Tactic in
 end Tactic
 
 end Strata
-
-initialize
-  registerTraceClass `strata.verify
