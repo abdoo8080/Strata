@@ -19,8 +19,8 @@ def Int.abs (x : Int) : Int :=
 
 theorem List.getElem_of_findIdx?_eq_some {xs : List α} {mkTypeFunType : α → Bool} {i : Nat}
     (h : xs.findIdx? mkTypeFunType = some i) : mkTypeFunType (xs[i]'((List.findIdx?_eq_some_iff_findIdx_eq.mp h).left)) := by
-    have ⟨h1, h2⟩ := List.findIdx?_eq_some_iff_getElem.mp h
-    exact h2.1
+  have ⟨h1, h2⟩ := List.findIdx?_eq_some_iff_getElem.mp h
+  exact h2.1
 
 def mkTypeFunType (n : Nat) : Type 1 := n.repeat (Type → ·) Type
 
@@ -140,9 +140,9 @@ theorem denoteSortOption_Some :
 theorem denoteFunSortCons_isSome (h : (denoteFunSort sctx (a :: as) out).isSome) :
     (denoteSort sctx a.ty).isSome ∧ (denoteFunSort sctx as out).isSome := by
   simp only [denoteFunSort, Option.pure_def, Option.bind_eq_bind,
-               Option.isSome_bind, Option.isSome_some, Option.any_true] at h
-    have ⟨h1 , h2⟩ := (Option.any_eq_true_iff_get _ _).mp h
-    exact ⟨h1, h2⟩
+              Option.isSome_bind, Option.isSome_some, Option.any_true] at h
+  have ⟨h1 , h2⟩ := (Option.any_eq_true_iff_get _ _).mp h
+  exact ⟨h1, h2⟩
 
 theorem arrow_of_denoteFunSortCons_isSome (h : (denoteFunSort sctx (a :: as) out).isSome) :
     have has := denoteFunSortCons_isSome h
