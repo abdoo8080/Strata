@@ -1,4 +1,5 @@
 import Strata.Languages.Boogie.MetaVerifier
+import Smt
 
 open Strata
 
@@ -77,17 +78,12 @@ spec {
 
 theorem findMax_smtVCsCorrect : smtVCsCorrect findMax := by
   gen_smt_vcs
-  case arbitrary_iter_maintain_invariant_0 =>
-    intro Map _ n i max nums get h0 hin ⟨⟨⟨hi1, hi2⟩, (hi3 : ∀ k, _)⟩, ⟨j, hi4⟩⟩
-    intros
-    constructor
-    · constructor
-      · grind
-      · intro k hk
-        have : k < i ∨ k = i := by grind
-        grind
-    · grind
-  case findMax_ensures_1 =>
-    simp only [and_imp]
-    grind
-  all_goals (try grind)
+  case entry_invariant_0 =>
+    -- rename free variables
+    intro Map _ n nums read h1n hn0
+    -- rename bound variables
+    show ((_ ∧ _) ∧ (∀ k, _)) ∧ (∃ j, _)
+    -- break down conjunctions into separate goals
+    refine ⟨⟨⟨?n_gt_0, ?i_in_range_0_n⟩, ?max_is_curr_max⟩, ?max_in_nums⟩
+    all_goals (smt [*])
+  all_goals smt

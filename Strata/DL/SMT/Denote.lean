@@ -14,9 +14,6 @@ term and uninterpreted-function contexts so that evaluation is safe.
 
 open Strata.SMT
 
-def Int.abs (x : Int) : Int :=
-  if x < 0 then -x else x
-
 theorem List.getElem_of_findIdx?_eq_some {xs : List α} {mkTypeFunType : α → Bool} {i : Nat}
     (h : xs.findIdx? mkTypeFunType = some i) : mkTypeFunType (xs[i]'((List.findIdx?_eq_some_iff_findIdx_eq.mp h).left)) := by
   have ⟨h1, h2⟩ := List.findIdx?_eq_some_iff_getElem.mp h
@@ -476,7 +473,7 @@ noncomputable def denoteTerm (ctx : Context) (t : Term) : Option (TermDenoteResu
     return ⟨.prim .int, rfl, fun Γ => @HMod.hMod Int Int Int _ (x Γ) (y Γ)⟩
   | .app .abs [x] _ =>
     let ⟨.prim .int, _, x⟩ ← denoteTerm ctx x | none
-    return ⟨.prim .int, rfl, fun Γ => (x Γ).abs⟩
+    return ⟨.prim .int, rfl, fun Γ => if @LT.lt Int _ (x Γ) 0 then @Neg.neg Int _ (x Γ) else x Γ⟩
   -- SMT-Lib theory of bitvectors
   | .prim (.bitvec (n := n) bv) =>
     return ⟨.prim (.bitvec n), rfl, fun _ => bv⟩

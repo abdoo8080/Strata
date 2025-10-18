@@ -23,3 +23,8 @@ name = "StrataVerify"
 
 [[lean_exe]]
 name = "StrataToCBMC"
+
+[[require]]
+name = "smt"
+git = "https://github.com/abdoo8080/lean-smt"
+rev = "meta-smt"
