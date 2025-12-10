@@ -8,6 +8,7 @@ import Lean
 
 import Strata.Languages.Boogie.Verifier
 import Strata.Languages.C_Simp.Verify
+import Strata.Languages.Boole.Verify
 import Strata.DL.Imperative.SMTUtils
 import Strata.DL.SMT.CexParser
 import Strata.DL.SMT.Denote
@@ -50,6 +51,14 @@ def genVCs (program : Strata.C_Simp.Program) (options : Options := Options.defau
 
 end C_Simp
 
+namespace Boole
+
+def genVCs (program : Strata.Boole.Program) (options : Options := Options.default) : Option Boogie.BoogieVCs := do
+  let program := Strata.Boole.toBoogieProgram program
+  Boogie.genVCs program options
+
+end Boole
+
 namespace Strata
 
 def genBoogieVCs (program : Program) : Option Boogie.BoogieVCs := do
@@ -59,6 +68,9 @@ def genBoogieVCs (program : Program) : Option Boogie.BoogieVCs := do
   else if program.dialect == "C_Simp" then
     let (program, #[]) := C_Simp.TransM.run (C_Simp.translateProgram (program.commands)) | none
     C_Simp.genVCs program { (default : Options) with verbose := false : Options }
+  else if program.dialect == "Boole" then
+    let (program, #[]) := Boole.TransM.run default (Boole.translateProgram program) | none
+    Boole.genVCs program { (default : Options) with verbose := false : Options }
   else
     none
 
