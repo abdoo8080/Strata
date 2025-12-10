@@ -418,6 +418,96 @@ noncomputable def applyUF (tdi : TermDenoteInput ctx) (uf : (denoteFunSort ctx.s
     let uf := uf (Option.get_congr ha ▸ a.res tdi)
     applyUF tdi uf as (Nat.succ.inj hl) (fun i hi => (has (i + 1) (Nat.succ_lt_succ hi)))
 
+@[simp]
+def bindForallVar (ctx : Context) (hTy : (denoteSort ctx.sctx ty).isSome) :
+    let tctx := { ufs := ctx.tctx.ufs, vs := ctx.tctx.vs }
+    let v' := { id := n, ty := ty }
+    let vs' := v' :: ctx.tctx.vs
+    let tctx' := { ufs := ctx.tctx.ufs, vs := vs' }
+    (TermDenoteInput ⟨ctx.sctx, tctx'⟩ → Prop) →
+    TermDenoteInput ⟨ctx.sctx, tctx⟩ → Prop :=
+  let tctx := { ufs := ctx.tctx.ufs, vs := ctx.tctx.vs }
+  let v' := { id := n, ty := ty }
+  let vs' := v' :: ctx.tctx.vs
+  let tctx' : TermContext := { ufs := ctx.tctx.ufs, vs := vs' }
+  fun ft' (tdi : TermDenoteInput ⟨ctx.sctx, tctx⟩) =>
+    ∀ (x : (denoteSort ctx.sctx v'.ty).get hTy ⟨tdi.sΓ, tdi.hsΓ⟩),
+      let v' := { var := v', h := hTy, varΓ := x }
+      let vΓ' : TermVarEnvironment ⟨tdi.sΓ, tdi.hsΓ⟩ := v' :: tdi.tΓ.vs
+      have hv' : vΓ'.WF vs' :=
+        have h' := show _ + _ = _ + _ from tdi.htΓ.hv.h ▸ rfl
+        have ha' := fun i hivs => match i with
+          | 0 => rfl
+          | i + 1 =>
+            have hivs' := Nat.lt_of_succ_lt_succ hivs
+            have hivΓ := Nat.succ_lt_succ (tdi.htΓ.hv.h ▸ hivs')
+            (List.getElem_cons_succ _ ctx.tctx.vs i hivs).symm ▸ (List.getElem_cons_succ _ tdi.tΓ.vs i hivΓ).symm ▸ tdi.htΓ.hv.ha i hivs'
+        { h := h', ha := ha' }
+      let tdi' : TermDenoteInput ⟨ctx.sctx, tctx'⟩ :=
+        { sΓ := tdi.sΓ, hsΓ := tdi.hsΓ, tΓ := { ufs := tdi.tΓ.ufs, vs := vΓ' }, htΓ := { hv := hv', huf := tdi.htΓ.huf } }
+      ft' tdi'
+
+@[simp]
+def buildForall (ctx : Context) (vs : List TermVar)
+    (hTys : (denoteFunSort ctx.sctx vs (.prim .bool)).isSome)
+    (bodyFt : TermDenoteInput { sctx := ctx.sctx, tctx := { vs := vs.reverse ++ ctx.tctx.vs, ufs := ctx.tctx.ufs } } → Prop)
+    (tdi : TermDenoteInput ctx)
+    : Prop :=
+    match vs with
+    | [] => bodyFt tdi
+    | { id := n, ty := ty } :: vs =>
+      have hTys' := (denoteFunSortCons_isSome hTys).right
+      letI ctx' : Context := { sctx := ctx.sctx, tctx := { vs := { id := n, ty := ty } :: ctx.tctx.vs, ufs := ctx.tctx.ufs } }
+      have hvs : ({ id := n, ty := ty } :: vs).reverse ++ ctx.tctx.vs = vs.reverse ++ ctx'.tctx.vs :=
+        List.reverse_cons ▸ List.append_assoc _ _ _ ▸ rfl
+      let ft' := buildForall ctx' vs hTys' (hvs ▸ bodyFt)
+      bindForallVar ctx (denoteFunSortCons_isSome hTys).left ft' tdi
+
+@[simp]
+def bindExistsVar (ctx : Context) (hTy : (denoteSort ctx.sctx ty).isSome) :
+    let tctx := { ufs := ctx.tctx.ufs, vs := ctx.tctx.vs }
+    let v' := { id := n, ty := ty }
+    let vs' := v' :: ctx.tctx.vs
+    let tctx' := { ufs := ctx.tctx.ufs, vs := vs' }
+    (TermDenoteInput ⟨ctx.sctx, tctx'⟩ → Prop) →
+    TermDenoteInput ⟨ctx.sctx, tctx⟩ → Prop :=
+  let tctx := { ufs := ctx.tctx.ufs, vs := ctx.tctx.vs }
+  let v' := { id := n, ty := ty }
+  let vs' := v' :: ctx.tctx.vs
+  let tctx' : TermContext := { ufs := ctx.tctx.ufs, vs := vs' }
+  fun ft' (tdi : TermDenoteInput ⟨ctx.sctx, tctx⟩) =>
+    ∃ (x : (denoteSort ctx.sctx v'.ty).get hTy ⟨tdi.sΓ, tdi.hsΓ⟩),
+      let v' := { var := v', h := hTy, varΓ := x }
+      let vΓ' : TermVarEnvironment ⟨tdi.sΓ, tdi.hsΓ⟩ := v' :: tdi.tΓ.vs
+      have hv' : vΓ'.WF vs' :=
+        have h' := show _ + _ = _ + _ from tdi.htΓ.hv.h ▸ rfl
+        have ha' := fun i hivs => match i with
+          | 0 => rfl
+          | i + 1 =>
+            have hivs' := Nat.lt_of_succ_lt_succ hivs
+            have hivΓ := Nat.succ_lt_succ (tdi.htΓ.hv.h ▸ hivs')
+            (List.getElem_cons_succ _ ctx.tctx.vs i hivs).symm ▸ (List.getElem_cons_succ _ tdi.tΓ.vs i hivΓ).symm ▸ tdi.htΓ.hv.ha i hivs'
+        { h := h', ha := ha' }
+      let tdi' : TermDenoteInput ⟨ctx.sctx, tctx'⟩ :=
+        { sΓ := tdi.sΓ, hsΓ := tdi.hsΓ, tΓ := { ufs := tdi.tΓ.ufs, vs := vΓ' }, htΓ := { hv := hv', huf := tdi.htΓ.huf } }
+      ft' tdi'
+
+@[simp]
+def buildExists (ctx : Context) (vs : List TermVar)
+    (hTys : (denoteFunSort ctx.sctx vs (.prim .bool)).isSome)
+    (bodyFt : TermDenoteInput { sctx := ctx.sctx, tctx := { vs := vs.reverse ++ ctx.tctx.vs, ufs := ctx.tctx.ufs } } → Prop)
+    (tdi : TermDenoteInput ctx)
+    : Prop :=
+    match vs with
+    | [] => bodyFt tdi
+    | { id := n, ty := ty } :: vs =>
+      have hTys' := (denoteFunSortCons_isSome hTys).right
+      letI ctx' : Context := { sctx := ctx.sctx, tctx := { vs := { id := n, ty := ty } :: ctx.tctx.vs, ufs := ctx.tctx.ufs } }
+      have hvs : ({ id := n, ty := ty } :: vs).reverse ++ ctx.tctx.vs = vs.reverse ++ ctx'.tctx.vs :=
+        List.reverse_cons ▸ List.append_assoc _ _ _ ▸ rfl
+      let ft' := buildExists ctx' vs hTys' (hvs ▸ bodyFt)
+      bindExistsVar ctx (denoteFunSortCons_isSome hTys).left ft' tdi
+
 mutual
 
 /-
@@ -467,55 +557,18 @@ noncomputable def denoteTerm (ctx : Context) (t : Term) : Option (TermDenoteResu
     else
       none
   -- Quantifiers
-  -- TODO (support lists later!)
-  | .quant .all [{ id := n, ty := ty }] _ t =>
-    if hTy : (denoteSort ctx.sctx ty).isSome then
-      let v' := { id := n, ty := ty }
-      let vs' := v' :: ctx.tctx.vs
-      let tctx' := { ufs := ctx.tctx.ufs, vs := vs' }
-      let ⟨.prim .bool, _, ft⟩ ← denoteTerm ⟨ctx.sctx, tctx'⟩ t | none
-      let ft (tdi : TermDenoteInput ctx) :=
-        ∀ x : (denoteSort ctx.sctx ty).get hTy ⟨tdi.sΓ, tdi.hsΓ⟩,
-          let var' := { var := { id := n, ty := ty }, h := hTy, varΓ := x }
-          let vΓ' : TermVarEnvironment ⟨tdi.sΓ, tdi.hsΓ⟩ := var' :: tdi.tΓ.vs
-          have hv' : vΓ'.WF vs' :=
-            have h' := show _ + _ = _ + _ from tdi.htΓ.hv.h ▸ rfl
-            have ha' := fun i hivs => match i with
-              | 0 => rfl
-              | i + 1 =>
-                have hivs' := Nat.lt_of_succ_lt_succ hivs
-                have hivΓ := Nat.succ_lt_succ (tdi.htΓ.hv.h ▸ hivs')
-                (List.getElem_cons_succ _ ctx.tctx.vs i hivs).symm ▸ (List.getElem_cons_succ _ tdi.tΓ.vs i hivΓ).symm ▸ tdi.htΓ.hv.ha i hivs'
-            { h := h', ha := ha' }
-          let tdi' : TermDenoteInput ⟨ctx.sctx, tctx'⟩ :=
-            { sΓ := tdi.sΓ, hsΓ := tdi.hsΓ, tΓ := { ufs := tdi.tΓ.ufs, vs := vΓ' }, htΓ := { hv := hv', huf := tdi.htΓ.huf } }
-          ft tdi'
-      return ⟨.prim .bool, rfl, ft⟩
+  | .quant .all vs _ t =>
+    if hTys : (denoteFunSort ctx.sctx vs (.prim .bool)).isSome then
+      let tctx : Context := { sctx := ctx.sctx, tctx := { vs := vs.reverse ++ ctx.tctx.vs, ufs := ctx.tctx.ufs } }
+      let ⟨.prim .bool, _, tFt⟩ ← denoteTerm tctx t | none
+      return ⟨.prim .bool, rfl, buildForall ctx vs hTys tFt⟩
     else
       none
-  | .quant .exist [{ id := n, ty := ty }] _ t =>
-    if hTy : (denoteSort ctx.sctx ty).isSome then
-      let v' := { id := n, ty := ty }
-      let vs' := v' :: ctx.tctx.vs
-      let tctx' := { ufs := ctx.tctx.ufs, vs := vs' }
-      let ⟨.prim .bool, _, ft⟩ ← denoteTerm ⟨ctx.sctx, tctx'⟩ t | none
-      let ft (tdi : TermDenoteInput ctx) :=
-        ∃ x : (denoteSort ctx.sctx ty).get hTy ⟨tdi.sΓ, tdi.hsΓ⟩,
-          let var' := { var := { id := n, ty := ty }, h := hTy, varΓ := x }
-          let vΓ' : TermVarEnvironment ⟨tdi.sΓ, tdi.hsΓ⟩ := var' :: tdi.tΓ.vs
-          have hv' : vΓ'.WF vs' :=
-            have h' := show _ + _ = _ + _ from tdi.htΓ.hv.h ▸ rfl
-            have ha' := fun i hivs => match i with
-              | 0 => rfl
-              | i + 1 =>
-                have hivs' := Nat.lt_of_succ_lt_succ hivs
-                have hivΓ := Nat.succ_lt_succ (tdi.htΓ.hv.h ▸ hivs')
-                (List.getElem_cons_succ _ ctx.tctx.vs i hivs).symm ▸ (List.getElem_cons_succ _ tdi.tΓ.vs i hivΓ).symm ▸ tdi.htΓ.hv.ha i hivs'
-            { h := h', ha := ha' }
-          let tdi' : TermDenoteInput ⟨ctx.sctx, tctx'⟩ :=
-            { sΓ := tdi.sΓ, hsΓ := tdi.hsΓ, tΓ := { ufs := tdi.tΓ.ufs, vs := vΓ' }, htΓ := { hv := hv', huf := tdi.htΓ.huf } }
-          ft tdi'
-      return ⟨.prim .bool, rfl, ft⟩
+  | .quant .exist vs _ t =>
+    if hTys : (denoteFunSort ctx.sctx vs (.prim .bool)).isSome then
+      let tctx : Context := { sctx := ctx.sctx, tctx := { vs := vs.reverse ++ ctx.tctx.vs, ufs := ctx.tctx.ufs } }
+      let ⟨.prim .bool, _, tFt⟩ ← denoteTerm tctx t | none
+      return ⟨.prim .bool, rfl, buildExists ctx vs hTys tFt⟩
     else
       none
   -- SMT-Lib core theory
