@@ -4,6 +4,15 @@ import Strata.Languages.Boogie.SMTEncoder
 open Lean
 open Strata SMT
 
+deriving instance Hashable for Boogie.SMT.Sort
+
+inductive Translate.Var where
+  | bv : SMT.TermVar → Translate.Var
+  | uf : SMT.UF → Translate.Var
+  | us : Boogie.SMT.Sort → Translate.Var
+  | is : Boogie.SMT.Sort → Translate.Var
+deriving BEq, Hashable, Repr
+
 structure Translate.State where
   /-- Current de Bruijn level. -/
   level : Nat := 0
@@ -15,7 +24,7 @@ structure Translate.State where
       is stored using de Bruijn indices computed at the variable's level `vl`.
       To convert the type to use de Bruijn indices at the current level, we need
       to "sanitize" it by calling `sanitizeExpr` with the current level. -/
-  bvars : Std.HashMap Name (Expr × Nat) := {}
+  bvars : Std.HashMap Var (Expr × Nat) := {}
 deriving Repr
 
 abbrev TranslateM := StateT Translate.State (Except MessageData)
@@ -54,12 +63,12 @@ where
       e.updateProj! b
     | e => e
 
-def findName (n : Name) : TranslateM (Expr × Expr) := do
+def findVar (v : Var) : TranslateM (Expr × Expr) := do
   let state ← get
-  match state.bvars[n]? with
+  match state.bvars[v]? with
   | some (t, i) =>
     return (sanitizeExpr t (state.level - i), .bvar (state.level - i - 1))
-  | none => throw m!"Error: variable '{n}' not found in context"
+  | none => throw m!"Error: variable '{repr v}' not found in context"
 
 private def mkArrow (α β : Expr) : Expr :=
   Lean.mkForall .anonymous BinderInfo.default α β
@@ -166,24 +175,24 @@ def translateSort (ty : TermType) : TranslateM Expr := do
     let ty ← translateSort ty
     return .app (.const ``Option [0]) ty
   | .constr n as =>
-    let (_, t) ← findName (symbolToName n)
+    let (_, t) ← findVar (.us { name := n, arity := as.length })
     let as ← as.mapM translateSort
     return mkAppN t as.toArray
 
 def translateTerm (t : SMT.Term) : TranslateM (Expr × Expr) := do
   match t with
   | .var v =>
-    findName (symbolToName v.id)
+    findVar (.bv v)
   | .app (.uf uf) as ty =>
-    let (_, f) ← findName (symbolToName uf.id)
+    let (_, f) ← findVar (.uf uf)
     let as ← as.mapM (translateTerm · >>= pure ∘ Prod.snd)
     return (← translateSort ty, mkAppN f as.toArray)
   | .quant q ns _ b =>
     let state ← get
-    let translateBinder := fun ({ id := n, ty }) => do
-      let n := symbolToName n
-      let t ← translateSort ty
-      modify fun s => { level := s.level + 1, bvars := s.bvars.insert n (t, s.level) }
+    let translateBinder := fun v => do
+      let n := symbolToName v.id
+      let t ← translateSort v.ty
+      modify fun s => { level := s.level + 1, bvars := s.bvars.insert (.bv v) (t, s.level) }
       return (n, t)
     let ns ← ns.mapM translateBinder
     let (_, b) ← translateTerm b
@@ -283,12 +292,12 @@ where
   translateTypeDecl (us : Boogie.SMT.Sort) : TranslateM (Array (Name × Expr × BinderInfo)) := do
     let n := symbolToName us.name
     let t := us.arity.repeatTR (.forallE .anonymous (.sort 1) · .default) (.sort 1)
-    modify fun s => { level := s.level + 1, bvars := s.bvars.insert n (t, s.level) }
+    modify fun s => { level := s.level + 1, bvars := s.bvars.insert (.us us) (t, s.level) }
     let hn := `inst
     let xs := (Array.range us.arity).map Expr.bvar
     let nonempty := .app (.const ``Nonempty [1]) (mkAppN (.bvar us.arity) xs.reverse)
     let ht := us.arity.repeatTR (.forallE `α (.sort 1) · .default) nonempty
-    modify fun s => { level := s.level + 1, bvars := s.bvars.insert hn (ht, s.level) }
+    modify fun s => { level := s.level + 1, bvars := s.bvars.insert (.is us) (ht, s.level) }
     return #[(n, t, .default), (hn, ht, .instImplicit)]
 
 def withTypeDefs (iss : Map String TermType) (k : TranslateM Expr) : TranslateM Expr := do
@@ -305,7 +314,7 @@ where
     let n := symbolToName is.fst
     let t := .sort 1
     let v ← translateSort is.snd
-    modify fun s => { level := s.level + 1, bvars := s.bvars.insert n (t, s.level) }
+    modify fun s => { level := s.level + 1, bvars := s.bvars.insert (.us { name := is.fst, arity := 0 }) (t, s.level) }
     return (n, t, v)
 
 def withFunDecls (ufs : Array UF) (k : TranslateM Expr) : TranslateM Expr := do
@@ -321,12 +330,12 @@ where
     let ps ← uf.args.mapM translateParam
     let s ← translateSort uf.out
     let t := ps.foldr (fun (n, t) b => .forallE n t b .default) s
-    set { level := state.level + 1, bvars := state.bvars.insert n (t, state.level) : Translate.State }
+    set { level := state.level + 1, bvars := state.bvars.insert (.uf uf) (t, state.level) : Translate.State }
     return (n, t)
   translateParam (v : TermVar) : TranslateM (Name × Expr) := do
     let n := symbolToName v.id
     let t ← translateSort v.ty
-    modify fun s => { level := s.level + 1, bvars := s.bvars.insert n (t, s.level) }
+    modify fun s => { level := s.level + 1, bvars := s.bvars.insert (.bv v) (t, s.level) }
     return (n, t)
 
 def withFunDefs (ifs : Array Boogie.SMT.IF) (k : TranslateM Expr) : TranslateM Expr := do
@@ -347,12 +356,12 @@ where
     let n := symbolToName f.uf.id
     let t := ps.foldr (fun (n, t) b => .forallE n t b .default) s
     let v := ps.foldr (fun (n, t) b => .lam n t b .default) b
-    set { level := state.level + 1, bvars := state.bvars.insert n (t, state.level) : Translate.State }
+    set { level := state.level + 1, bvars := state.bvars.insert (.uf f.uf) (t, state.level) : Translate.State }
     return (n, t, v)
   translateParam (v : TermVar) : TranslateM (Name × Expr) := do
     let n := symbolToName v.id
     let t ← translateSort v.ty
-    modify fun s => { level := s.level + 1, bvars := s.bvars.insert n (t, s.level) }
+    modify fun s => { level := s.level + 1, bvars := s.bvars.insert (.bv v) (t, s.level) }
     return (n, t)
 
 def withCtx (ctx : Boogie.SMT.Context) (k : TranslateM Expr) : TranslateM Expr := do
