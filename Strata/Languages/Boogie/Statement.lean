@@ -45,14 +45,6 @@ instance : HasPassiveCmds Expression Command where
 instance : HasHavoc Expression Command where
   havoc x := .cmd (.havoc x)
 
-def CmdExt.sizeOf (c : CmdExt P) : Nat :=
-  match c with
-  | .cmd c => SizeOf.sizeOf c
-  | .call l p a _ => 3 + l.length + SizeOf.sizeOf p + a.length
-
-instance : SizeOf (CmdExt P) where
-  sizeOf := CmdExt.sizeOf
-
 instance [ToFormat (Cmd P)] [ToFormat (MetaData P)]
     [ToFormat (List P.Ident)] [ToFormat (List P.Expr)] :
     ToFormat (CmdExt P) where
@@ -122,16 +114,11 @@ def Statement.eraseTypes (s : Statement) : Statement :=
     let body' := Statements.eraseTypes bss
     .loop guard measure invariant body' md
   | .goto l md => .goto l md
-  termination_by (Stmt.sizeOf s)
-  decreasing_by
-  all_goals simp_wf <;> simp [sizeOf] <;> omega
 
 def Statements.eraseTypes (ss : Statements) : Statements :=
   match ss with
   | [] => []
   | s :: srest => Statement.eraseTypes s :: Statements.eraseTypes srest
-  termination_by (sizeOf ss)
-  decreasing_by all_goals simp [sizeOf] <;> omega
 end
 
 ---------------------------------------------------------------------
@@ -199,7 +186,6 @@ def Statement.modifiedVarsTrans
     Statements.modifiedVarsTrans π tbss ++ Statements.modifiedVarsTrans π ebss
   | .loop _ _ _ bss _ =>
     Statements.modifiedVarsTrans π bss
-  termination_by (Stmt.sizeOf s)
 
 def Statements.modifiedVarsTrans
   {ProcType : Type}
@@ -208,7 +194,6 @@ def Statements.modifiedVarsTrans
   : List Expression.Ident := match ss with
   | [] => []
   | s :: ss => Statement.modifiedVarsTrans π s ++ Statements.modifiedVarsTrans π ss
-  termination_by (Block.sizeOf ss)
 end
 
 def Command.getVarsTrans
@@ -237,7 +222,6 @@ def Statement.getVarsTrans
     Statements.getVarsTrans π tbss ++ Statements.getVarsTrans π ebss
   | .loop _ _ _ bss  _ =>
     Statements.getVarsTrans π bss
-  termination_by (Stmt.sizeOf s)
 
 def Statements.getVarsTrans
   {ProcType : Type}
@@ -246,7 +230,6 @@ def Statements.getVarsTrans
   : List Expression.Ident := match ss with
   | [] => []
   | s :: ss => Statement.getVarsTrans π s ++ Statements.getVarsTrans π ss
-  termination_by (Block.sizeOf ss)
 end
 
 -- don't need to transitively lookup for procedures
@@ -280,7 +263,6 @@ def Statement.touchedVarsTrans
   | .block _ bss _ => Statements.touchedVarsTrans π bss
   | .ite _ tbss ebss _ => Statements.touchedVarsTrans π tbss ++ Statements.touchedVarsTrans π ebss
   | .loop _ _ _ bss _ => Statements.touchedVarsTrans π bss
-  termination_by (Stmt.sizeOf s)
 
 def Statements.touchedVarsTrans
   {ProcType : Type}
@@ -290,7 +272,6 @@ def Statements.touchedVarsTrans
   match ss with
   | [] => []
   | s :: srest => Statement.touchedVarsTrans π s ++ Statements.touchedVarsTrans π srest
-  termination_by (Block.sizeOf ss)
 end
 
 def Statement.allVarsTrans

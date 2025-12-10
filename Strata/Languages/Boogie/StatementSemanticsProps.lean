@@ -1366,8 +1366,8 @@ theorem EvalStatementsApp :
     | stmts_some_sem Heval1 Heval1' =>
       next s σ₁ ss =>
       constructor <;> try assumption
-      simp [sizeOf] at *
-      have Hsz : Block.sizeOf (ss ++ ss₂) = n - 1 - s.sizeOf := by omega
+      simp at *
+      have Hsz : sizeOf (ss ++ ss₂) = n - 1 - sizeOf s := by omega
       apply ih _ (by omega) ss ss₂ σ₁ σ' σ'' Hsz
       assumption
       assumption
@@ -2058,9 +2058,6 @@ theorem EvalBlockRefinesContract :
       -- apply Heval
     . apply EvalBlockRefinesContract
       apply Hevals
-  termination_by (Block.sizeOf ss)
-  decreasing_by
-    all_goals simp_all <;> omega
 
 theorem EvalStmtRefinesContract :
   EvalStmt Expression Command (EvalCommand π) δ σ s σ' →
