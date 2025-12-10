@@ -85,10 +85,9 @@ where
           .ok (.cmd c', Env)
 
         | .block label bss md => do
-          let Env := Env.pushEmptyContext
-          let (ss', Env) ← go Env bss []
-          let s' := .block label ss' md
-          .ok (s', Env.popContext)
+          let (bss', Env) ← goBlock Env bss []
+          let s' := .block label bss' md
+          .ok (s', Env)
 
         | .ite cond tss ess md => do
           let _ ← Env.freeVarCheck cond f!"[{s}]"
@@ -96,9 +95,9 @@ where
           let condty := conda.toLMonoTy
           match condty with
           | .tcons "bool" [] =>
-            let (tb, Env) ← go Env [(.block "$$_then" tss  #[])] []
-            let (eb, Env) ← go Env [(.block "$$_else" ess  #[])] []
-            let s' := .ite conda.unresolved tb eb md
+            let (tss, Env) ← goBlock Env tss []
+            let (ess, Env) ← goBlock Env ess []
+            let s' := .ite conda.unresolved tss ess md
             .ok (s', Env)
           | _ => .error f!"[{s}]: If's condition {cond} is not of type `bool`!"
 
@@ -125,7 +124,7 @@ where
           | (.tcons "bool" [], some (.tcons "int" []), none)
           | (.tcons "bool" [], none, some (.tcons "bool" []))
           | (.tcons "bool" [], some (.tcons "int" []), some (.tcons "bool" [])) =>
-            let (tb, Env) ← go Env [(.block "$$_loop_body" bss #[])] []
+            let (tb, Env) ← goBlock Env bss []
             let s' := .loop conda.unresolved (mt.map LExpr.unresolved) (it.map LExpr.unresolved) tb md
             .ok (s', Env)
           | _ =>
@@ -149,9 +148,11 @@ where
           | .none => .error f!"{s} occurs outside a procedure."
 
       go Env srest (s' :: acc)
-    termination_by Block.sizeOf ss
-    decreasing_by
-    all_goals simp_wf <;> omega
+  goBlock (Env : TEnv Visibility) (bss : Imperative.Block Boogie.Expression Boogie.Command) (acc : List Statement) :
+    Except Format (Block × TEnv Visibility) := do
+    let Env := Env.pushEmptyContext
+    let (ss', Env) ← go Env bss acc
+    .ok (ss', Env.popContext)
 
 /--
 Apply type substitution `S` to a command.

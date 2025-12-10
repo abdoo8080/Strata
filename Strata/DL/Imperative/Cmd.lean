@@ -59,20 +59,19 @@ def Cmd.getMetaData (c : Cmd P) : MetaData P :=
   | .havoc _ md  | .assert _ _ md | .assume _ _ md =>
    md
 
-instance : SizeOf String where
-  sizeOf s := s.length
-
 @[simp]
 def Cmd.sizeOf (c : Imperative.Cmd P) : Nat :=
   match c with
   | .init   n t e _ => 1 + SizeOf.sizeOf n + SizeOf.sizeOf t + SizeOf.sizeOf e
   | .set    n e _ => 1 + SizeOf.sizeOf n + SizeOf.sizeOf e
   | .havoc  n _ => 1 + SizeOf.sizeOf n
-  | .assert l b _ => 1 + SizeOf.sizeOf l + SizeOf.sizeOf b
-  | .assume l b _ => 1 + SizeOf.sizeOf l + SizeOf.sizeOf b
+  | .assert l b _ => 1 + l.utf8ByteSize + SizeOf.sizeOf b
+  | .assume l b _ => 1 + l.utf8ByteSize + SizeOf.sizeOf b
 
-instance (P : PureExpr) : SizeOf (Imperative.Cmd P) where
-  sizeOf := Cmd.sizeOf
+-- TODO: the above `sizeOf` definition is wrong. It uses the default `SizeOf`
+-- instance for `P`, which always returns `0` as shown below.
+example : Cmd.sizeOf (Cmd.init n t e md) = 1 := by
+  rfl
 
 ---------------------------------------------------------------------
 

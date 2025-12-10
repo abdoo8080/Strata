@@ -33,22 +33,22 @@ theorem StmtToNondetCorrect
   WellFormedSemanticEvalBool δ →
   WellFormedSemanticEvalVal δ →
   (∀ st,
-    Stmt.sizeOf st ≤ m →
+    sizeOf st ≤ m →
     EvalStmt P (Cmd P) (EvalCmd P) δ σ st σ' →
     EvalNondetStmt P (Cmd P) (EvalCmd P) δ σ (StmtToNondetStmt st) σ') ∧
   (∀ ss,
-    Block.sizeOf ss ≤ m →
+    sizeOf ss ≤ m →
     EvalBlock P (Cmd P) (EvalCmd P) δ σ ss σ' →
     EvalNondetStmt P (Cmd P) (EvalCmd P) δ σ (BlockToNondetStmt ss) σ') := by
   intros Hwfb Hwfvl
   apply Nat.strongRecOn (motive := λ m ↦
     ∀ σ σ',
     (∀ st,
-      Stmt.sizeOf st ≤ m →
+      sizeOf st ≤ m →
       EvalStmt P (Cmd P) (EvalCmd P) δ σ st σ' →
       EvalNondetStmt P (Cmd P) (EvalCmd P) δ σ (StmtToNondetStmt st) σ') ∧
     (∀ ss,
-      Block.sizeOf ss ≤ m →
+      sizeOf ss ≤ m →
       EvalBlock P (Cmd P) (EvalCmd P) δ σ ss σ' →
       EvalNondetStmt P (Cmd P) (EvalCmd P) δ σ (BlockToNondetStmt ss) σ')
   )
@@ -63,14 +63,14 @@ theorem StmtToNondetCorrect
       cases Heval with
       | block_sem Heval =>
       next label b =>
-      specialize ih (Block.sizeOf bss) (by simp_all; omega)
+      specialize ih (sizeOf bss) (by simp_all; omega)
       apply (ih _ _).2
       omega
       assumption
     | .ite c tss ess =>
       cases Heval with
       | ite_true_sem Htrue Hwfb Heval =>
-        specialize ih (Block.sizeOf tss) (by simp_all; omega)
+        specialize ih (sizeOf tss) (by simp_all; omega)
         refine EvalNondetStmt.choice_left_sem Hwfb ?_
         apply EvalNondetStmt.seq_sem
         . apply EvalNondetStmt.cmd_sem
@@ -81,7 +81,7 @@ theorem StmtToNondetCorrect
           assumption
       | ite_false_sem Hfalse Hwfb Heval =>
         next c t e =>
-        specialize ih (Block.sizeOf ess) (by simp_all; omega)
+        specialize ih (sizeOf ess) (by simp_all; omega)
         refine EvalNondetStmt.choice_right_sem Hwfb ?_
         apply EvalNondetStmt.seq_sem
         . apply EvalNondetStmt.cmd_sem
@@ -116,8 +116,8 @@ theorem StmtToNondetCorrect
       simp [HasVarsImp.modifiedVars, Cmd.modifiedVars] at Hin
     case stmts_some_sem h t σ'' Heval Hevals =>
       simp [BlockToNondetStmt]
-      simp [Block.sizeOf] at Hsz
-      specialize ih (h.sizeOf + Block.sizeOf t) (by omega)
+      simp at Hsz
+      specialize ih (sizeOf h + sizeOf t) (by omega)
       constructor
       . apply (ih _ _).1
         omega
@@ -135,7 +135,7 @@ theorem StmtToNondetStmtCorrect
   EvalStmt P (Cmd P) (EvalCmd P) δ σ st σ' →
   EvalNondetStmt P (Cmd P) (EvalCmd P) δ σ (StmtToNondetStmt st) σ' := by
   intros Hwfb Hwfv Heval
-  apply (StmtToNondetCorrect Hwfb Hwfv (m:=st.sizeOf)).1 <;> simp_all
+  apply (StmtToNondetCorrect Hwfb Hwfv (m:=sizeOf st)).1 <;> simp_all
 
 /-- Proof that the Deterministic-to-nondeterministic transformation is correct
 for multiple (deterministic) statements -/
@@ -146,4 +146,4 @@ theorem BlockToNondetStmtCorrect
   EvalBlock P (Cmd P) (EvalCmd P) δ σ ss σ' →
   EvalNondetStmt P (Cmd P) (EvalCmd P) δ σ (BlockToNondetStmt ss) σ' := by
   intros Hwfb Hwfv Heval
-  apply (StmtToNondetCorrect Hwfb Hwfv (m:=Block.sizeOf ss)).2 <;> simp_all
+  apply (StmtToNondetCorrect Hwfb Hwfv (m:=sizeOf ss)).2 <;> simp_all

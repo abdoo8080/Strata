@@ -86,7 +86,7 @@ def Stmt.inductionOn {P : PureExpr} {Cmd : Type}
 
 ---------------------------------------------------------------------
 
-/-! ### SizeOf -/
+/-! ### sizeOf -/
 
 mutual
 @[simp]
@@ -106,12 +106,6 @@ def Block.sizeOf (ss : Imperative.Block P C) : Nat :=
 
 end
 
-instance (P : PureExpr) : SizeOf (Imperative.Stmt P C) where
-  sizeOf := Stmt.sizeOf
-
-instance (P : PureExpr) : SizeOf (Imperative.Block P C) where
-  sizeOf := Block.sizeOf
-
 ---------------------------------------------------------------------
 
 /--
@@ -128,7 +122,6 @@ def Stmt.hasLabelInside (label : String) (s : Stmt P C) : Bool :=
   |  .block label' bss _ => label = label' || Block.hasLabelInside label bss
   |  .ite _ tss ess _ => Block.hasLabelInside label tss || Block.hasLabelInside label ess
   |  _ => false
-  termination_by (Stmt.sizeOf s)
 
 /--
 Do statements `ss` contain any block labeled `label`?
@@ -137,7 +130,6 @@ def Block.hasLabelInside (label : String) (ss : List (Stmt P C)) : Bool :=
   match ss with
   | [] => false
   | s :: ss => Stmt.hasLabelInside label s || Block.hasLabelInside label ss
-  termination_by (Block.sizeOf ss)
 end
 
 ---------------------------------------------------------------------
@@ -153,13 +145,11 @@ def Stmt.getVars [HasVarsPure P P.Expr] [HasVarsPure P C] (s : Stmt P C) : List 
   | .ite _ tbss ebss _ => Block.getVars tbss ++ Block.getVars ebss
   | .loop _ _ _ bss _ => Block.getVars bss
   | .goto _ _  => []
-  termination_by (Stmt.sizeOf s)
 
 def Block.getVars [HasVarsPure P P.Expr] [HasVarsPure P C] (ss : Block P C) : List P.Ident :=
   match ss with
   | [] => []
   | s :: srest => Stmt.getVars s ++ Block.getVars srest
-  termination_by (Block.sizeOf ss)
 end
 
 instance (P : PureExpr) [HasVarsPure P P.Expr] [HasVarsPure P C]
@@ -178,13 +168,11 @@ def Stmt.definedVars [HasVarsImp P C] (s : Stmt P C) : List P.Ident :=
   | .block _ bss _ => Block.definedVars bss
   | .ite _ tbss ebss _ => Block.definedVars tbss ++ Block.definedVars ebss
   | _ => []
-  termination_by (Stmt.sizeOf s)
 
 def Block.definedVars [HasVarsImp P C] (ss : Block P C) : List P.Ident :=
   match ss with
   | [] => []
   | s :: srest => Stmt.definedVars s ++ Block.definedVars srest
-  termination_by (Block.sizeOf ss)
 end
 
 mutual
@@ -196,13 +184,11 @@ def Stmt.modifiedVars [HasVarsImp P C] (s : Stmt P C) : List P.Ident :=
   | .block _ bss _ => Block.modifiedVars bss
   | .ite _ tbss ebss _ => Block.modifiedVars tbss ++ Block.modifiedVars ebss
   | .loop _ _ _ bss _ => Block.modifiedVars bss
-  termination_by (Stmt.sizeOf s)
 
 def Block.modifiedVars [HasVarsImp P C] (ss : Block P C) : List P.Ident :=
   match ss with
   | [] => []
   | s :: srest => Stmt.modifiedVars s ++ Block.modifiedVars srest
-  termination_by (Block.sizeOf ss)
 end
 
 mutual
@@ -215,14 +201,12 @@ def Stmt.touchedVars [HasVarsImp P C] (s : Stmt P C) : List P.Ident :=
   | .block _ bss _ => Block.touchedVars bss
   | .ite _ tbss ebss _ => Block.touchedVars tbss ++ Block.touchedVars ebss
   | _ => Stmt.definedVars s ++ Stmt.modifiedVars s
-  termination_by (Stmt.sizeOf s)
 
 @[simp]
 def Block.touchedVars [HasVarsImp P C] (ss : Block P C) : List P.Ident :=
   match ss with
   | [] => []
   | s :: srest => Stmt.touchedVars s ++ Block.touchedVars srest
-  termination_by (Block.sizeOf ss)
 end
 
 instance (P : PureExpr) [HasVarsImp P C] : HasVarsImp P (Stmt P C) where

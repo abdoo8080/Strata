@@ -128,8 +128,6 @@ theorem EvalStmtDefMonotone
       apply EvalBlockDefMonotone <;> assumption
   | .goto _ _ => cases Heval
   | .loop _ _ _ _ _ => cases Heval
-  termination_by (Stmt.sizeOf s)
-  decreasing_by all_goals simp [*] at * <;> omega
 
 theorem EvalBlockDefMonotone
   [HasVal P] [HasFvar P] [HasBool P] [HasBoolVal P] [HasNot P]
@@ -149,6 +147,4 @@ theorem EvalBlockDefMonotone
     apply EvalBlockDefMonotone (σ:=σ1)
     apply EvalStmtDefMonotone <;> assumption
     assumption
-  termination_by (Block.sizeOf ss)
-  decreasing_by all_goals simp [*] at * <;> omega
 end
