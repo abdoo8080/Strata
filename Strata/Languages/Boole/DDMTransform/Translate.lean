@@ -901,6 +901,27 @@ def translateInvariant (p : Strata.Program) (bindings : TransBindings) (arg : Ar
     translateExpr p bindings args[0]!
   | _ => pure none
 
+def translateStep (p : Strata.Program) (bindings : TransBindings) (arg : Arg) : TransM (Option Expression.Expr) := do
+  match arg with
+  | .option _ (.some m) => do
+    let args ← checkOpArg m q`Boole.step 1
+    translateExpr p bindings args[0]!
+  | _ => pure none
+
+partial def translateInvariants (p : Strata.Program) (bindings : TransBindings) (arg : Arg) :
+  TransM (List Expression.Expr) := do
+  let .op op := arg
+    | TransM.error s!"translateInvariants expects an op {repr arg}"
+  match op.name with
+  | q`Boole.nilInvariants =>
+    pure []
+  | q`Boole.consInvariants =>
+    let args ← checkOpArg arg q`Boole.consInvariants 2
+    let i ← translateExpr p bindings args[0]!
+    let is ← translateInvariants p bindings args[1]!
+    pure (i::is)
+  | _ => TransM.error s!"translateInvariants unimplemented for {repr op}"
+
 def initVarStmts (tpids : ListMap Expression.Ident LTy) (bindings : TransBindings) :
   TransM ((List Boole.Statement) × TransBindings) := do
   match tpids with
@@ -996,6 +1017,28 @@ partial def translateStmt (p : Strata.Program) (bindings : TransBindings) (arg :
     let bindings := { bindings with boundVars := bindings.boundVars.pop }
     let md ← getOpMetaData op
     return ([.for id (.forAll [] mty) init g step .none i bodyss md], bindings)
+  | q`Boole.for_down_to_by_statement, #[va, ina, il, sa, ia, ba] =>
+    let (id, mty) ← translateMonoBindMk bindings va
+    let init ← translateExpr p bindings ina
+    let limit ← translateExpr p bindings il
+    let bindings := { bindings with boundVars := bindings.boundVars.push (LExpr.fvar () id mty) }
+    let step ← translateStep p bindings sa
+    let i ← translateInvariants p bindings ia
+    let (bodyss, bindings) ← translateBlock p bindings ba
+    let bindings := { bindings with boundVars := bindings.boundVars.pop }
+    let md ← getOpMetaData op
+    return ([.forto false id (.forAll [] mty) init limit step .none i bodyss md], bindings)
+  | q`Boole.for_to_by_statement, #[va, ina, il, sa, ia, ba] =>
+    let (id, mty) ← translateMonoBindMk bindings va
+    let init ← translateExpr p bindings ina
+    let limit ← translateExpr p bindings il
+    let bindings := { bindings with boundVars := bindings.boundVars.push (LExpr.fvar () id mty) }
+    let step ← translateStep p bindings sa
+    let i ← translateInvariants p bindings ia
+    let (bodyss, bindings) ← translateBlock p bindings ba
+    let bindings := { bindings with boundVars := bindings.boundVars.pop }
+    let md ← getOpMetaData op
+    return ([.forto true id (.forAll [] mty) init limit step .none i bodyss md], bindings)
   | q`Boogie.call_statement, #[lsa, fa, esa] =>
     let ls  ← translateCommaSep (translateIdent BooleIdent) lsa
     let f   ← translateIdent String fa

@@ -217,6 +217,7 @@ inductive Stmt (P : PureExpr) (Cmd : Type) : Type where
   | ite      (cond : P.Expr)  (thenb : List (Stmt P Cmd)) (elseb : List (Stmt P Cmd)) (md : MetaData P := .empty)
   | loop     (guard : P.Expr) (measure : Option P.Expr) (invariant : Option P.Expr) (body : List (Stmt P Cmd)) (md : MetaData P := .empty)
   | for      (var : P.Ident) (tp : P.Ty) (init : P.Expr) (guard : P.Expr) (step : P.Expr) (measure : Option P.Expr) (invariant : Option P.Expr) (body : List (Stmt P Cmd)) (md : MetaData P := .empty)
+  | forto    (dir : Bool) (var : P.Ident) (tp : P.Ty) (init : P.Expr) (limit : P.Expr) (step : Option P.Expr) (measure : Option P.Expr) (invariants : List P.Expr) (body : List (Stmt P Cmd)) (md : MetaData P := .empty)
   -- | forEach  (elem : P.Ident) (arr : P.Expr) (invariant : Option P.Expr) (body : List (Stmt P Cmd))
         --  (md : MetaData P := .empty)
   | goto     (label : String) (md : MetaData P := .empty)
@@ -238,6 +239,8 @@ partial def formatStmt (P : PureExpr) (s : Stmt P C)
   | .loop guard measure invariant body md => f!"{md}while ({guard}) ({measure}) ({invariant}) " ++
                         Format.bracket "{" f!"{formatBlock P body}" "}"
   | .for var tp init guard step measure invariant body md => f!"{md}for (var {var} : {tp} := {init}; {guard}; {step}) ({measure}) ({invariant}) " ++
+                        Format.bracket "{" f!"{formatBlock P body}" "}"
+  | .forto dir var tp init limit step measure invariants body md => f!"{md}for {var} : {tp} := {init}; {if dir then "to" else "downto"} {limit} by {step} ({measure}) ({invariants}) " ++
                         Format.bracket "{" f!"{formatBlock P body}" "}"
   -- | .forEach elem arr invariant body md => f!"{md}for ({elem} : {arr}) ({invariant}) " ++
                         -- Format.bracket "{" f!"{formatBlock P body}" "}"

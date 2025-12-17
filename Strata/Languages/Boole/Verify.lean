@@ -133,6 +133,21 @@ def toBoogieStmt (s : Boole.Statement) : Boogie.Statement :=
     let body := (toBoogieBlock body) ++ [step]
     let loop := .loop (toBoogieExpr guard) (measure.map toBoogieExpr) (invariant.map toBoogieExpr) body
     .block "for" [init, loop] (toBoogieMetaData md)
+  | .forto dir var ty init limit step measure invariants body md =>
+    let init := .cmd (.cmd (.init (toBoogieIdent var) ty (toBoogieExpr init)))
+    let guard := Lambda.LExpr.mkApp () Boogie.intLeOp [.fvar () ⟨var.name, .unres⟩ none, toBoogieExpr limit]
+    let step := match step with
+      | none => Lambda.LExpr.intConst () 1
+      | some e => toBoogieExpr e
+    let op := if dir then Boogie.intAddOp else Boogie.intSubOp
+    let step := Lambda.LExpr.mkApp () op [.fvar () ⟨var.name, .unres⟩ none, step]
+    let step := .cmd (.cmd (.set (toBoogieIdent var) step))
+    let invariant := match invariants.map toBoogieExpr with
+      | [] => none
+      | i :: is => some (is.foldl (Lambda.LExpr.mkApp () Boogie.boolAndOp [·, ·]) i)
+    let body := (toBoogieBlock body) ++ [step]
+    let loop := .loop guard (measure.map toBoogieExpr) invariant body
+    .block "for" [init, loop] (toBoogieMetaData md)
 
 def toBoogieBlock (bss : Boole.Block Boole.Expression Boole.Command) : Imperative.Block Boogie.Expression Boogie.Command :=
   let ss : List (Boogie.Statement) := bss.map fun s =>
