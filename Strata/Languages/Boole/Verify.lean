@@ -102,6 +102,10 @@ def toBoogieValue (v : Imperative.MetaDataElem.Value Boole.Expression) : Imperat
   match v with
   | .expr e => .expr (toBoogieExpr e)
   | .msg s => .msg s
+  | .fileRange r => .fileRange r
+
+def ofBoogieLParamsMetaData (md : Boogie.BoogieLParams.Metadata) : Boole.BooleLParams.Metadata :=
+  md
 
 def toBoogieMetaDataElem (md : Imperative.MetaDataElem Boole.Expression) : Imperative.MetaDataElem Boogie.Expression :=
   { fld := toBoogieField md.fld, value := toBoogieValue md.value }
@@ -163,7 +167,7 @@ def toBoogieFunction (f : Boole.Function) : Boogie.Function :=
     output   := f.output
     body     := f.body.map toBoogieExpr
     attr     := f.attr
-    concreteEval := f.concreteEval.map (fun f e es => toBoogieExpr (f (ofBoogieExpr e) (es.map ofBoogieExpr)))
+    concreteEval := f.concreteEval.map (fun f md es => (f (ofBoogieLParamsMetaData md) (es.map ofBoogieExpr)).map toBoogieExpr)
     axioms   := f.axioms.map toBoogieExpr }
 
 def toBoogieProcedureHeader (p : Boole.Procedure.Header) : Boogie.Procedure.Header :=

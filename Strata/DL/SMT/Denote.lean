@@ -447,7 +447,6 @@ def bindForallVar (ctx : Context) (hTy : (denoteSort ctx.sctx ty).isSome) :
         { sΓ := tdi.sΓ, hsΓ := tdi.hsΓ, tΓ := { ufs := tdi.tΓ.ufs, vs := vΓ' }, htΓ := { hv := hv', huf := tdi.htΓ.huf } }
       ft' tdi'
 
-@[simp]
 def buildForall (ctx : Context) (vs : List TermVar)
     (hTys : (denoteFunSort ctx.sctx vs (.prim .bool)).isSome)
     (bodyFt : TermDenoteInput { sctx := ctx.sctx, tctx := { vs := vs.reverse ++ ctx.tctx.vs, ufs := ctx.tctx.ufs } } → Prop)
@@ -492,7 +491,6 @@ def bindExistsVar (ctx : Context) (hTy : (denoteSort ctx.sctx ty).isSome) :
         { sΓ := tdi.sΓ, hsΓ := tdi.hsΓ, tΓ := { ufs := tdi.tΓ.ufs, vs := vΓ' }, htΓ := { hv := hv', huf := tdi.htΓ.huf } }
       ft' tdi'
 
-@[simp]
 def buildExists (ctx : Context) (vs : List TermVar)
     (hTys : (denoteFunSort ctx.sctx vs (.prim .bool)).isSome)
     (bodyFt : TermDenoteInput { sctx := ctx.sctx, tctx := { vs := vs.reverse ++ ctx.tctx.vs, ufs := ctx.tctx.ufs } } → Prop)
@@ -1018,7 +1016,6 @@ noncomputable def bindIFVar (ctx : Context) {hTys hTyTys} :
         { sΓ := tdi.sΓ, hsΓ := tdi.hsΓ, tΓ := { ufs := tdi.tΓ.ufs, vs := vΓ' }, htΓ := { hv := hv', huf := tdi.htΓ.huf } }
       ft' tdi'
 
-@[simp]
 noncomputable def buildIFBody (ctx : Context) {hTys hTy}
     (bodyFt : (tdi : TermDenoteInput { sctx := ctx.sctx, tctx := { vs := vs.reverse ++ ctx.tctx.vs, ufs := ctx.tctx.ufs } }) →
               (denoteSort ctx.sctx out).get hTy ⟨tdi.sΓ, tdi.hsΓ⟩)
@@ -1132,7 +1129,9 @@ where
 Interpret an SMT query by universally quantifying assumptions and returning the semantic proposition.
 -/
 @[simp]
-noncomputable def denoteQuery (ctx : Boogie.SMT.Context) (assums : List Term) (conc : Term) : Option Prop :=
+noncomputable def denoteQuery (ctx : Boogie.SMT.Context) (assums : List Term) (conc : Term) : Option Prop := do
+  -- Datatypes not supported yet
+  if !ctx.datatypes.isEmpty || !ctx.datatypeFuns.isEmpty then none
   let stmt := assums.foldr (.app .implies [·, ·] (.prim .bool)) conc
   let t := ctx.axms.foldr (.app .implies [·, ·] (.prim .bool)) stmt
   let uss := ctx.sorts.toList.reverse

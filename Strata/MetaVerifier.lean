@@ -281,11 +281,40 @@ deriving instance ToExpr for Op.Core
 deriving instance ToExpr for Op.Num
 deriving instance ToExpr for Op.BV
 deriving instance ToExpr for Op.Strings
+deriving instance ToExpr for Op.DatatypeFuncs
 deriving instance ToExpr for Op
 deriving instance ToExpr for QuantifierKind
 deriving instance ToExpr for SMT.Term
 deriving instance ToExpr for Boogie.SMT.Sort
 deriving instance ToExpr for Boogie.SMT.IF
+deriving instance ToExpr for Boogie.Visibility
+deriving instance ToExpr for Boogie.BoogieExprMetadata
+deriving instance ToExpr for Lambda.LMonoTy
+
+instance [ToExpr α] : ToExpr (Lambda.Identifier α) where
+  toExpr id :=
+    mkApp3 (.const ``Lambda.Identifier.mk []) (toTypeExpr α)
+      (toExpr id.name)
+      (toExpr id.metadata)
+  toTypeExpr := mkApp2 (.const ``Lambda.Identifier []) (toTypeExpr String) (toTypeExpr α)
+
+instance [ToExpr α] : ToExpr (Lambda.LConstr α) where
+  toExpr c :=
+    mkApp4 (.const ``Lambda.LConstr.mk []) (toTypeExpr α)
+      (toExpr c.name)
+      (toExpr c.args)
+      (toExpr c.testerName)
+  toTypeExpr := .app (.const ``Lambda.LConstr []) (toTypeExpr α)
+
+instance [ToExpr α] : ToExpr (Lambda.LDatatype α) where
+  toExpr dt :=
+    mkApp5 (.const ``Lambda.LDatatype.mk []) (toTypeExpr α)
+      (toExpr dt.name)
+      (toExpr dt.typeArgs)
+      (toExpr dt.constrs)
+      (mkApp2 (.const ``Eq.refl [1]) (toTypeExpr Bool) (toExpr true))
+  toTypeExpr := .app (.const ``Lambda.LDatatype []) (toTypeExpr α)
+
 deriving instance ToExpr for Boogie.SMT.Context
 
 def createGoal : SMTVC → MetaM MVarId := fun (label, ctx, ts, t) => do

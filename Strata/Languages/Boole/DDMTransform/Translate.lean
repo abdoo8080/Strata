@@ -46,19 +46,19 @@ def TransM.error [Inhabited α] (msg : String) : TransM α := do
 
 /- Metadata -/
 
-def toMetaData (sr : SourceRange)  (ictx : InputContext) : Imperative.MetaData Boole.Expression :=
+def toMetaData (ictx : InputContext) (sr : SourceRange) : Imperative.MetaData Boole.Expression :=
   let file := ictx.fileName
   let startPos := ictx.fileMap.toPosition sr.start
-  let fileElt := ⟨ MetaData.fileLabel, .msg file ⟩
-  let lineElt := ⟨ MetaData.startLineLabel, .msg s!"{startPos.line}" ⟩
-  let colElt := ⟨ MetaData.startColumnLabel, .msg s!"{startPos.column}" ⟩
-  #[fileElt, lineElt, colElt]
+  let endPos := ictx.fileMap.toPosition sr.stop
+  let uri: Uri := .file file
+  let fileRangeElt := ⟨ MetaData.fileRange, .fileRange ⟨ uri, startPos, endPos ⟩ ⟩
+  #[fileRangeElt]
 
 def getOpMetaData (op : Operation) : TransM (Imperative.MetaData Boole.Expression) :=
-  return (toMetaData op.ann) (← StateT.get).inputCtx
+  return (toMetaData · op.ann) (← StateT.get).inputCtx
 
 def getArgMetaData (arg : Arg) : TransM (Imperative.MetaData Boole.Expression) :=
-  return (toMetaData arg.ann) (← StateT.get).inputCtx
+  return (toMetaData · arg.ann) (← StateT.get).inputCtx
 
 ---------------------------------------------------------------------
 
