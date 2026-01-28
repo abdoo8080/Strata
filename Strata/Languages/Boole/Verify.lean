@@ -129,7 +129,11 @@ def toBoogieStmt (s : Boole.Statement) : Boogie.Statement :=
   | .cmd c => .cmd (toBoogieCmd c)
   | .block l b md => .block l (toBoogieBlock b) (toBoogieMetaData md)
   | .ite cond thenb elseb md => .ite (toBoogieExpr cond) (toBoogieBlock thenb) (toBoogieBlock elseb) (toBoogieMetaData md)
-  | .loop guard measure invariant body md => .loop (toBoogieExpr guard) (measure.map toBoogieExpr) (invariant.map toBoogieExpr) (toBoogieBlock body) (toBoogieMetaData md)
+  | .loop guard measure invariants body md =>
+  let invariant := match invariants.map toBoogieExpr with
+      | [] => none
+      | i :: is => some (is.foldl (Lambda.LExpr.mkApp () Boogie.boolAndOp [·, ·]) i)
+  .loop (toBoogieExpr guard) (measure.map toBoogieExpr) invariant (toBoogieBlock body) (toBoogieMetaData md)
   | .goto label md => .goto label (toBoogieMetaData md)
   | .for var ty init guard step measure invariant body md =>
     let init := .cmd (.cmd (.init (toBoogieIdent var) ty (toBoogieExpr init)))

@@ -46,6 +46,9 @@ op for_down_to_by_statement (v : MonoBind, init : Expr, limit : Expr,
   @[scope(v)] body : Block) : Statement =>
   "for " v " := " init " downto " limit step invs body;
 
+op while_statement (c : bool, invs : Invariants, body : Block) : Statement =>
+  "while" c invs body;
+
 #end
 
 ---------------------------------------------------------------------
@@ -58,7 +61,8 @@ program Boole;
 
 procedure f () returns ()
 {
-  for (i : int := 0; i < 10; i + 1)
+  for i : int := 0 to 10
+    invariant 0 <= i
   {
     i := i + 1;
   }
@@ -84,5 +88,18 @@ procedure h_down_to_by () returns ()
   }
 };
 
+procedure w () returns ()
+{
+  var j : int;
+  j := 0;
+
+  while j < 10
+    invariant 0 <= j
+    invariant j <= 10
+    invariant j == 0 || j > 0
+  {
+    j := j + 1;
+  }
+};
 
 #end

@@ -1000,9 +1000,9 @@ partial def translateStmt (p : Strata.Program) (bindings : TransBindings) (arg :
     let (fss, bindings) ← translateElse p bindings fa
     let md ← getOpMetaData op
     return ([.ite c tss fss md], bindings)
-  | q`Boogie.while_statement, #[ca, ia, ba] =>
+  | q`Boole.while_statement, #[ca, ia, ba] =>
     let c ← translateExpr p bindings ca
-    let i ← translateInvariant p bindings ia
+    let i ← translateInvariants p bindings ia
     let (bodyss, bindings) ← translateBlock p bindings ba
     let md ← getOpMetaData op
     return ([.loop c .none i bodyss md], bindings)

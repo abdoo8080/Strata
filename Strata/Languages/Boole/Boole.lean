@@ -215,7 +215,7 @@ inductive Stmt (P : PureExpr) (Cmd : Type) : Type where
   | cmd      (cmd : Cmd)
   | block    (label : String) (b : List (Stmt P Cmd)) (md : MetaData P := .empty)
   | ite      (cond : P.Expr)  (thenb : List (Stmt P Cmd)) (elseb : List (Stmt P Cmd)) (md : MetaData P := .empty)
-  | loop     (guard : P.Expr) (measure : Option P.Expr) (invariant : Option P.Expr) (body : List (Stmt P Cmd)) (md : MetaData P := .empty)
+  | loop     (guard : P.Expr) (measure : Option P.Expr) (invariants : List P.Expr) (body : List (Stmt P Cmd)) (md : MetaData P := .empty)
   | for      (var : P.Ident) (tp : P.Ty) (init : P.Expr) (guard : P.Expr) (step : P.Expr) (measure : Option P.Expr) (invariant : Option P.Expr) (body : List (Stmt P Cmd)) (md : MetaData P := .empty)
   | forto    (dir : Bool) (var : P.Ident) (tp : P.Ty) (init : P.Expr) (limit : P.Expr) (step : Option P.Expr) (measure : Option P.Expr) (invariants : List P.Expr) (body : List (Stmt P Cmd)) (md : MetaData P := .empty)
   -- | forEach  (elem : P.Ident) (arr : P.Expr) (invariant : Option P.Expr) (body : List (Stmt P Cmd))
@@ -236,7 +236,7 @@ partial def formatStmt (P : PureExpr) (s : Stmt P C)
                         Format.bracket "{" f!"{formatBlock P th}" "}" ++
                         f!"{Format.line}else" ++
                         Format.bracket "{" f!"{formatBlock P el}" "}"
-  | .loop guard measure invariant body md => f!"{md}while ({guard}) ({measure}) ({invariant}) " ++
+  | .loop guard measure invariants body md => f!"{md}while ({guard}) ({measure}) ({invariants}) " ++
                         Format.bracket "{" f!"{formatBlock P body}" "}"
   | .for var tp init guard step measure invariant body md => f!"{md}for (var {var} : {tp} := {init}; {guard}; {step}) ({measure}) ({invariant}) " ++
                         Format.bracket "{" f!"{formatBlock P body}" "}"
