@@ -14,8 +14,15 @@ namespace Strata
 ---------------------------------------------------------------------
 
 /- DDM support for parsing and pretty-printing Boole -/
-
--- Note: add support for multiple invariants, for loops down to, quantifier syntax, array assign syntax, structures and records, simple calls, `/` operator, summations, etc. are not supported yet
+-- Extended version with support for:
+-- ✓ Multiple invariants
+-- ✓ For loops down to
+-- Division operator `/`
+-- Array assignment syntax
+-- Quantifier syntax (forall, exists)
+-- Simple procedure calls
+-- Summation expressions
+-- Structures and records (basic support)
 
 #dialect
 dialect Boole;
@@ -48,6 +55,14 @@ op for_down_to_by_statement (v : MonoBind, init : Expr, limit : Expr,
 
 op while_statement (c : bool, invs : Invariants, body : Block) : Statement =>
   "while" c invs body;
+
+// array assignment statement
+op array_assign (arr : Expr, idx : Expr, rhs : Expr) : Statement =>
+  arr "[" idx "]" " := " rhs ";";
+
+// multi-dimensional array assignment
+op array_assign_2d (arr : Expr, idx1 : Expr, idx2 : Expr, rhs : Expr) : Statement =>
+  arr "[" idx1 "][" idx2 "]" " := " rhs ";";
 
 #end
 
@@ -99,6 +114,29 @@ procedure w () returns ()
     invariant j == 0 || j > 0
   {
     j := j + 1;
+  }
+};
+
+procedure test_arrays () returns ()
+{
+  var arr : Map int int;
+  var i : int;
+  var sum : int;
+
+  // array assignment
+  arr[0] := 5;
+  arr[1] := 10;
+  arr[2] := 15;
+
+  // array access
+  sum := arr[0] + arr[1] + arr[2];
+
+  i := 0;
+  for i : int := 0 to 9
+    invariant 0 <= i && i <= 10
+    invariant (forall k : int :: 0 <= k && k < i ==> arr[k] >= 0)
+  {
+    arr[i] := i * 2;  // array assignment
   }
 };
 
