@@ -186,6 +186,7 @@ def Statement.containsCmd (predicate : Imperative.Cmd Expression → Bool) (s : 
   | .ite _ then_ss else_ss _ => Statements.containsCmds predicate then_ss ||
                                 Statements.containsCmds predicate else_ss
   | .loop _ _ _ body_ss _ => Statements.containsCmds predicate body_ss
+  | .forto _ _ _ _ _ _ _ _ body_ss _ => Statements.containsCmds predicate body_ss
   | .goto _ _ => false
   termination_by Imperative.Stmt.sizeOf s
 
@@ -225,6 +226,7 @@ def Statement.collectCovers (s : Statement) : List (String × Imperative.MetaDat
   | .block _ inner_ss _ => Statements.collectCovers inner_ss
   | .ite _ then_ss else_ss _ => Statements.collectCovers then_ss ++ Statements.collectCovers else_ss
   | .loop _ _ _ body_ss _ => Statements.collectCovers body_ss
+  | .forto _ _ _ _ _ _ _ _ body_ss _ => Statements.collectCovers body_ss
   | .goto _ _ => []
   termination_by Imperative.Stmt.sizeOf s
 /--
@@ -249,6 +251,7 @@ def Statement.collectAsserts (s : Statement) : List (String × Imperative.MetaDa
   | .block _ inner_ss _ => Statements.collectAsserts inner_ss
   | .ite _ then_ss else_ss _ => Statements.collectAsserts then_ss ++ Statements.collectAsserts else_ss
   | .loop _ _ _ body_ss _ => Statements.collectAsserts body_ss
+  | .forto _ _ _ _ _ _ _ _ body_ss _ => Statements.collectAsserts body_ss
   | .goto _ _ => []
   termination_by Imperative.Stmt.sizeOf s
 /--
@@ -398,6 +401,11 @@ def evalAuxGo (steps : Nat) (old_var_subst : SubstMap) (Ewn : EnvWithNext) (ss :
           | .loop _ _ _ _ _ =>
             panic! "Cannot evaluate `loop` statement. \
                     Please transform your program to eliminate loops before \
+                    calling Core.Statement.evalAux"
+
+          | .forto _ _ _ _ _ _  _ _ _ _ =>
+            panic! "Cannot evaluate `forto` statement. \
+                    Please desugar/transform `for` into a loop-free form before \
                     calling Core.Statement.evalAux"
 
           | .goto l md => [{ Ewn with stk := Ewn.stk.appendToTop [.goto l md], nextLabel := (some l)}]

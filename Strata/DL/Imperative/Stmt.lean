@@ -33,6 +33,7 @@ inductive Stmt (P : PureExpr) (Cmd : Type) : Type where
   /-- An iterated execution statement. Includes an optional measure (for
   termination) and invariant. -/
   | loop     (guard : P.Expr) (measure : Option P.Expr) (invariant : Option P.Expr) (body : List (Stmt P Cmd)) (md : MetaData P := .empty)
+  | forto    (dir : Bool) (var : P.Ident) (tp : P.Ty) (init : P.Expr) (limit : P.Expr) (step : Option P.Expr) (measure : Option P.Expr) (invariants : List P.Expr) (body : List (Stmt P Cmd)) (md : MetaData P := .empty)
   /-- A semi-structured control flow statement transferring control to the given
   label. The control flow induced by `goto` must not create cycles. **NOTE:**
   This will likely be removed, in favor of an alternative view of imperative
@@ -67,20 +68,29 @@ def Stmt.inductionOn {P : PureExpr} {Cmd : Type}
       (body : List (Stmt P Cmd)) (md : MetaData P),
       (∀ s, s ∈ body → motive s) →
       motive (Stmt.loop guard measure invariant body md))
+    (forto_case :
+      ∀ (dir : Bool) (var : P.Ident) (tp : P.Ty) (init limit : P.Expr)
+        (step measure : Option P.Expr) (invariants : List P.Expr)
+        (body : List (Stmt P Cmd)) (md : MetaData P),
+        (∀ s, s ∈ body → motive s) →
+        motive (Stmt.forto dir var tp init limit step measure invariants body md))
     (goto_case : ∀ (label : String) (md : MetaData P),
       motive (Stmt.goto label md))
     (s : Stmt P Cmd) : motive s :=
   match s with
   | Stmt.cmd c => cmd_case c
   | Stmt.block label b md =>
-    block_case label b md (fun s _ => inductionOn cmd_case block_case ite_case loop_case goto_case s)
+    block_case label b md (fun s _ => inductionOn cmd_case block_case ite_case loop_case forto_case goto_case s)
   | Stmt.ite cond thenb elseb md =>
     ite_case cond thenb elseb md
-      (fun s _ => inductionOn cmd_case block_case ite_case loop_case goto_case s)
-      (fun s _ => inductionOn cmd_case block_case ite_case loop_case goto_case s)
+      (fun s _ => inductionOn cmd_case block_case ite_case loop_case forto_case goto_case s)
+      (fun s _ => inductionOn cmd_case block_case ite_case loop_case forto_case goto_case s)
   | Stmt.loop guard measure invariant body md =>
     loop_case guard measure invariant body md
-      (fun s _ => inductionOn cmd_case block_case ite_case loop_case goto_case s)
+      (fun s _ => inductionOn cmd_case block_case ite_case loop_case forto_case goto_case s)
+  | Stmt.forto dir var tp init limit step measure invariants body md =>
+    forto_case dir var tp init limit step measure invariants body md
+      (fun s _ => inductionOn cmd_case block_case ite_case loop_case forto_case goto_case s)
   | Stmt.goto label md => goto_case label md
   termination_by s
 
@@ -96,6 +106,11 @@ def Stmt.sizeOf (s : Imperative.Stmt P C) : Nat :=
   | .block _ bss _ => 1 + Block.sizeOf bss
   | .ite c tss ess _ => 3 + sizeOf c + Block.sizeOf tss + Block.sizeOf ess
   | .loop g _ _ bss _ => 3 + sizeOf g + Block.sizeOf bss
+  | .forto _ _ _ init limit step measure invariants bss _ =>
+      3 + sizeOf init + sizeOf limit + Block.sizeOf bss
+      + (match step with | none => 0 | some e => sizeOf e)
+      + (match measure with | none => 0 | some e => sizeOf e)
+      + (invariants.foldl (fun acc e => acc + sizeOf e) 0)
   | .goto _ _ => 1
 
 @[simp]
@@ -133,6 +148,7 @@ def Stmt.hasLabelInside (label : String) (s : Stmt P C) : Bool :=
   match s with
   |  .block label' bss _ => label = label' || Block.hasLabelInside label bss
   |  .ite _ tss ess _ => Block.hasLabelInside label tss || Block.hasLabelInside label ess
+  |  .forto _ _ _ _ _ _ _ _ bss _ => Block.hasLabelInside label bss
   |  _ => false
   termination_by (Stmt.sizeOf s)
 
@@ -158,6 +174,7 @@ def Stmt.getVars [HasVarsPure P P.Expr] [HasVarsPure P C] (s : Stmt P C) : List 
   | .block _ bss _ => Block.getVars bss
   | .ite _ tbss ebss _ => Block.getVars tbss ++ Block.getVars ebss
   | .loop _ _ _ bss _ => Block.getVars bss
+  | .forto _ _ _ _ _ _ _ _ bss _ => Block.getVars bss
   | .goto _ _  => []
   termination_by (Stmt.sizeOf s)
 
@@ -183,6 +200,7 @@ def Stmt.definedVars [HasVarsImp P C] (s : Stmt P C) : List P.Ident :=
   | .cmd cmd => HasVarsImp.definedVars cmd
   | .block _ bss _ => Block.definedVars bss
   | .ite _ tbss ebss _ => Block.definedVars tbss ++ Block.definedVars ebss
+  | .forto _ var _ _ _ _ _ _ bss _ => var :: Block.definedVars bss
   | _ => []
   termination_by (Stmt.sizeOf s)
 
@@ -201,6 +219,7 @@ def Stmt.modifiedVars [HasVarsImp P C] (s : Stmt P C) : List P.Ident :=
   | .goto _ _ => []
   | .block _ bss _ => Block.modifiedVars bss
   | .ite _ tbss ebss _ => Block.modifiedVars tbss ++ Block.modifiedVars ebss
+  | .forto _ var _ _ _ _ _ _ bss _ => var :: Block.modifiedVars bss
   | .loop _ _ _ bss _ => Block.modifiedVars bss
   termination_by (Stmt.sizeOf s)
 
@@ -220,6 +239,7 @@ def Stmt.touchedVars [HasVarsImp P C] (s : Stmt P C) : List P.Ident :=
   match s with
   | .block _ bss _ => Block.touchedVars bss
   | .ite _ tbss ebss _ => Block.touchedVars tbss ++ Block.touchedVars ebss
+  | .forto _ var _ _ _ _ _ _ bss _ => var :: Block.touchedVars bss
   | _ => Stmt.definedVars s ++ Stmt.modifiedVars s
   termination_by (Stmt.sizeOf s)
 
@@ -260,6 +280,8 @@ def formatStmt (P : PureExpr) (s : Stmt P C)
                         f!"{Format.line}else" ++
                         Format.bracket "{" f!"{formatBlock P el}" "}"
   | .loop guard measure invariant body md => f!"{md}while ({guard}) ({measure}) ({invariant}) " ++
+                        Format.bracket "{" f!"{formatBlock P body}" "}"
+  | .forto dir var tp init limit step measure invariants body md => f!"{md}for {var} : {tp} := {init}; {if dir then "to" else "downto"} {limit} by {step} ({measure}) ({invariants}) " ++
                         Format.bracket "{" f!"{formatBlock P body}" "}"
   | .goto label md => f!"{md}goto {label}"
   termination_by s.sizeOf

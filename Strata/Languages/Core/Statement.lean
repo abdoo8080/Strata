@@ -125,6 +125,15 @@ def Statement.eraseTypes (s : Statement) : Statement :=
   | .loop guard measure invariant bss md =>
     let body' := Statements.eraseTypes bss
     .loop guard measure invariant body' md
+  | .forto dir var tp init limit step measure invariants bss md =>
+    let body' := Statements.eraseTypes bss
+    .forto dir var tp
+      init.eraseTypes
+      limit.eraseTypes
+      (step.map Lambda.LExpr.eraseTypes)
+      (measure.map Lambda.LExpr.eraseTypes)
+      (invariants.map Lambda.LExpr.eraseTypes)
+      body' md
   | .goto l md => .goto l md
   termination_by (Stmt.sizeOf s)
   decreasing_by
@@ -203,6 +212,8 @@ def Statement.modifiedVarsTrans
     Statements.modifiedVarsTrans π tbss ++ Statements.modifiedVarsTrans π ebss
   | .loop _ _ _ bss _ =>
     Statements.modifiedVarsTrans π bss
+  | .forto _ var _ _ _ _ _ _ bss _ =>
+    var :: Statements.modifiedVarsTrans π bss
   termination_by (Stmt.sizeOf s)
 
 def Statements.modifiedVarsTrans
@@ -241,6 +252,14 @@ def Statement.getVarsTrans
     Statements.getVarsTrans π tbss ++ Statements.getVarsTrans π ebss
   | .loop _ _ _ bss  _ =>
     Statements.getVarsTrans π bss
+  | .forto _ var _ init limit step measure invariants bss _ =>
+    -- vars from bounds/step/invariants + body + loop var itself
+    HasVarsPure.getVars init ++
+    HasVarsPure.getVars limit ++
+    (match step with | none => [] | some e => HasVarsPure.getVars e) ++
+    (match measure with | none => [] | some e => HasVarsPure.getVars e) ++
+    (invariants.flatMap HasVarsPure.getVars) ++
+    (var :: Statements.getVarsTrans π bss)
   termination_by (Stmt.sizeOf s)
 
 def Statements.getVarsTrans
@@ -284,6 +303,8 @@ def Statement.touchedVarsTrans
   | .block _ bss _ => Statements.touchedVarsTrans π bss
   | .ite _ tbss ebss _ => Statements.touchedVarsTrans π tbss ++ Statements.touchedVarsTrans π ebss
   | .loop _ _ _ bss _ => Statements.touchedVarsTrans π bss
+  | .forto _ var _ _ _ _ _ _ bss _ =>
+    var :: Statements.touchedVarsTrans π bss
   termination_by (Stmt.sizeOf s)
 
 def Statements.touchedVarsTrans
@@ -346,6 +367,15 @@ def Statement.substFvar (s : Core.Statement)
           (Option.map (Lambda.LExpr.substFvar · fr to) invariant)
           (Block.substFvar body fr to)
           metadata
+  | .forto dir var tp init limit step measure invariants body metadata =>
+    .forto dir var tp
+      (Lambda.LExpr.substFvar init fr to)
+      (Lambda.LExpr.substFvar limit fr to)
+      (step.map (Lambda.LExpr.substFvar · fr to))
+      (measure.map (Lambda.LExpr.substFvar · fr to))
+      (invariants.map (Lambda.LExpr.substFvar · fr to))
+      (Block.substFvar body fr to)
+      metadata
   | .goto _ _ => s
   termination_by s.sizeOf
   decreasing_by all_goals(simp_wf; try omega)
@@ -375,6 +405,9 @@ def Statement.renameLhs (s : Core.Statement)
     .block lbl (Block.renameLhs b fr to) metadata
   | .havoc _ _ | .assert _ _ _ | .assume _ _ _ | .ite _ _ _ _
   | .loop _ _ _ _ _ | .goto _ _ | .cover _ _ _ => s
+  | .forto dir var tp init limit step measure invariants body md =>
+    .forto dir var tp init limit step measure invariants
+      (Block.renameLhs body fr to) md
   termination_by s.sizeOf
   decreasing_by all_goals(simp_wf; try omega)
 end

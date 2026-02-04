@@ -328,6 +328,27 @@ op command_datatype (name : Ident,
                      @[scopeDatatype(name, typeParams)] constructors : ConstructorList) : Command =>
   "datatype " name typeParams " {" constructors "}" ";\n";
 
+// Constructr syntax for multiple invariants
+category Invariants;
+op nilInvariants : Invariants => ;
+op consInvariants(e : Expr, is : Invariants) : Invariants =>
+  "invariant" e is;
+
+// Constructr syntax for steps
+category Step;
+op step(e: Expr) : Step =>
+  " by " e;
+
+op for_to_by_statement (v : MonoBind, init : Expr, limit : Expr,
+  @[scope(v)] step : Option Step, @[scope(v)] invs : Invariants,
+  @[scope(v)] body : Block) : Statement =>
+  "for " v " := " init " to " limit step invs body;
+
+op for_down_to_by_statement (v : MonoBind, init : Expr, limit : Expr,
+  @[scope(v)] step : Option Step, @[scope(v)] invs : Invariants,
+  @[scope(v)] body : Block) : Statement =>
+  "for " v " := " init " downto " limit step invs body;
+
 #end
 
 namespace CoreDDM

@@ -55,6 +55,9 @@ def Stmt.removeLoopsM
     let bss ← Block.removeLoopsM bss
     pure (.block label bss md)
   | .cmd _ => pure s
+  | .forto dir var tp init limit step measure invariants body md => do
+    let body ← Block.removeLoopsM body
+    pure (.forto dir var tp init limit step measure invariants body md)
   | .goto _ _ => pure s
 
 def Block.removeLoopsM
