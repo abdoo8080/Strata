@@ -1,4 +1,11 @@
-import Lean
+/-
+  Copyright Strata Contributors
+
+  SPDX-License-Identifier: Apache-2.0 OR MIT
+-/
+
+import Lean.Expr
+import Lean.ToExpr
 import Strata.Languages.Core.SMTEncoder
 
 open Lean
